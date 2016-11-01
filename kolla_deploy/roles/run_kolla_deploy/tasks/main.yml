@@ -1,0 +1,37 @@
+---
+  - name: run kolla phase1
+    shell: "docker exec kolla-deploy kolla-ansible {{ item }} --inventory=/etc/kolla/inventory --configdir=/etc/kolla &> kolla-ansible-{{ item }}.log"
+    ignore_errors: true
+    register: phase1_results
+    args:
+      executable: /bin/bash
+      chdir: "{{ kolla_deploy_config_dir }}"
+    with_items:
+      - cleanup
+      - prechecks
+
+  # need to split because 'with' does not stop on failure
+  - name: run kolla phase2
+    shell: "docker exec kolla-deploy kolla-ansible {{ item }} --inventory=/etc/kolla/inventory --configdir=/etc/kolla &> kolla-ansible-{{ item }}.log"
+    ignore_errors: true
+    register: phase2_results
+    args:
+      executable: /bin/bash
+      chdir: "{{ kolla_deploy_config_dir }}"
+    with_items:
+      - deploy
+      - post-deploy
+    when: phase1_results|succeeded
+
+  - name: find all log files
+    command: "find {{ kolla_deploy_config_dir }} -type f -printf '%p////'"
+    register: found_log_files
+
+  - name: fetch log files
+    fetch: src="{{ item }}" dest="{{ local_log_dir }}" validate_checksum=yes
+    # we can't split on null because ansible remove non-printable characters if stdout is a tty
+    # so use '////' because find can't be tricked to have //// appear anywhere
+    with_items: "{{ found_log_files.stdout.split('////') }}"
+
+  - fail: msg="kolla failed"
+    when: phase1_results|failed or phase2_results|failed

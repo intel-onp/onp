@@ -1,0 +1,61 @@
+#jinja2: lstrip_blocks: True
+# Universal properties
+{% if item.value['bond_mode'] is defined %}
+TYPE=Bond
+{% else %}
+TYPE=Ethernet
+{% endif %}
+DEVICE={{ item.value.interface }}
+ONBOOT=yes
+{% if item.value.nm_controlled is defined %}
+NM_CONTROLLED={{ item.value.nm_controlled }}
+{% endif %}
+USERCTL=no
+PEERDNS=no
+IPV6INIT=no
+IPV6_AUTOCONF=no
+{% if item.value.mac_address is defined %}
+HWADDR={{ item.value.mac_address }}
+{% endif %}
+{# vxlan requires overridding regular network config #}
+{% if use_odl or (ovs_type == "ovs" and tenant_network_type == "vxlan") %}
+{# for vxlan and/or odl, set an IP address on the tenant network #}
+{# for tenant network, bootproto should be static, tunnel_ip from onps_config is used for this ip address #}
+    {% if node_info[inventory_hostname].tenant_bonded == false %}
+    {# in case tenant interface not bonded it can have an ip #}
+BOOTPROTO=static
+IPADDR={{ node_info[inventory_hostname].tunnel_ip }}
+PREFIX={{ node_info[inventory_hostname].tunnel_prefix }}
+    {% endif %}
+{% else %}
+BOOTPROTO={{ item.value.boot_protocol }}
+    {% if item.value.boot_protocol == "dhcp" %}
+DHCP_HOSTNAME={{ inventory_hostname }}
+    {% endif %}
+    {% if item.value.ip_address is defined %}
+IPADDR={{ item.value.ip_address }}
+PREFIX={{ item.value.prefix }}
+    {% endif %}
+{% endif %}
+{% if item.value.default_route is defined %}
+DEFROUTE={{ item.value.default_route }}
+{% endif %}
+{% if node_info[inventory_hostname].tenant_bonded == true %}
+    {% if item.value.bond_mode is defined %}
+    {# master interface #}
+    {# master interface has an ip in every case (vlan, vxlan) #}
+        {% if tenant_network_type == "vxlan" %}
+IPADDR={{ node_info[inventory_hostname].tunnel_ip }}
+PREFIX={{ node_info[inventory_hostname].tunnel_prefix }}
+        {% else %}
+IPADDR={{ item.value.bond_ip }}
+PREFIX={{ item.value.bond_prefix }}
+        {% endif %}
+BONDING_MASTER=yes
+BONDING_OPTS="mode={{ item.value.bond_mode }} miimon={{ item.value.bond_miimon }}"
+    {% else %}
+    {# slave interface #}
+MASTER={{ item.value.bond_master }}
+SLAVE=yes
+    {% endif %}
+{% endif %}

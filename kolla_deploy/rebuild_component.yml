@@ -1,0 +1,52 @@
+---
+- hosts: kolla_build
+
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - kolla_version.yml
+    - onps_commit_ids.yml
+
+  vars:
+    kolla_update_log_file: "{{ kolla_dir }}/components/registry_update.log"
+    components_dir: "{{ kolla_dir }}/components"
+    update_config_dir: "{{ kolla_dir }}/components/etc/kolla"
+
+
+  #  Uncomment or add components to the list bellow to clone and update it in the registry
+  #  NOTE: onps_commit_ids.yml file should be updated first with desired commit ids and repos
+  #        For local changes clone_components should be commented out
+
+    components:
+  #    AODH: aodh-base
+  #    CEILOMETER: ceilometer-base
+  #    CINDER: cinder-base
+  #    DESIGNATE: designate-base
+  #    GLANCE: glance-base
+  #    GNOCCHI: gnocchi-base
+  #    HEAT: heat-base
+  #    HORIZON: horizon
+  #    IRONIC: ironic-base
+  #    KEYSTONE: keystone
+  #    MAGNUM: magnum-base
+  #    MANILA: manila-base
+  #    MISTRAL: mistral-base
+  #    MURANO: murano-base
+  #    NEUTRON: neutron-base
+  #    NOVA: nova-base
+  #    NOVNC: nova-novncproxy
+  #    SPICE_HTML5: nova-spicehtml5proxy
+  #    OPENSTACK: openstack-base
+  #    SWIFT: swift-base
+  #    TEMPEST: tempest
+  #    TROVE: trove-base
+  #    ZAQAR: zaqar
+
+
+  roles:
+    - clone_components
+    - update_registry
+
+
+
+

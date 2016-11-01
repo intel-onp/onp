@@ -1,0 +1,34 @@
+---
+  - name: bootstrap docker project repos
+    template: "src={{ ansible_os_family }}-repos.j2 dest=/etc/yum.repos.d/docker.repo"
+
+  - name: create docker service config dir
+    file: path=/etc/systemd/system/docker.service.d state=directory
+
+  - name: ensure correct docker version
+    action: "{{ ansible_pkg_mgr }} name={{ item }} state=present"
+    with_items: "{{ docker_packages[ansible_os_family] }}"
+
+  - name: create docker mountflags config
+    template: src=mountflags-conf.j2 dest=/etc/systemd/system/docker.service.d/mountflags.conf owner=root mode=0644
+    notify:
+     - systemd daemon reload
+     - restart docker
+
+  - name: create insecure registry config
+    template: src=insecure-registry-conf.j2 dest=/etc/systemd/system/docker.service.d/insecure-registry.conf owner=root mode=0644
+    notify:
+     - systemd daemon reload
+     - restart docker
+    when: docker_registry != docker_hub
+
+  - name: create docker proxy config
+    template: src=http-proxy-conf.j2 dest=/etc/systemd/system/docker.service.d/http-proxy.conf owner=root mode=0644
+    when: '"http_proxy" in proxy_env or "https_proxy" in proxy_env'
+    notify:
+     - systemd daemon reload
+     - restart docker
+
+  - name: start docker service
+    service: name=docker state=started enabled=yes
+

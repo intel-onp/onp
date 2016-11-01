@@ -1,0 +1,19 @@
+[DEFAULT]
+
+base = centos
+base_tag = latest
+debug = true
+{% if "http_proxy" in proxy_env or "https_proxy" in proxy_env %}
+include_header = .header
+include_footer = .footer
+{% endif %}
+keep = false
+namespace = {{ docker_namespace }}
+cache = true
+push = true
+push_threads = 1
+retries = 3
+registry = {{ docker_registry }}
+install_type = source
+threads = 4
+maintainer = Intel Corp. (http://www.intel.com)

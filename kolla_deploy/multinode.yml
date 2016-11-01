@@ -1,0 +1,7 @@
+---
+  - include: prepare_docker_registry.yml
+  - include: prepare_kolla_build.yml
+  - include: prepare_kolla_host.yml
+  # run docker
+  - include: kolla_deploy.yml
+  - include: post_deploy.yml

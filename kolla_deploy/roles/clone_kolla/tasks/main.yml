@@ -1,0 +1,24 @@
+---
+  - name: Install git package
+    action: "{{ ansible_pkg_mgr }} name=git state=present"
+
+  - name: Create kolla repository path
+    file: "path={{ kolla_dir }} state=directory"
+
+  - name: Clone kolla
+    async: "{{ connection_timeout }}"
+    poll: 10
+    git:
+      repo: "{{ kolla_repo }}"
+      dest: "{{ kolla_dir }}"
+      version: "{{ kolla_branch }}"
+      accept_hostkey: yes
+      recursive: no
+      force: yes
+
+  - name: Install kolla dependencies
+    # disable version check to prevent extra https access
+    pip:
+      requirements: "requirements.txt"
+      chdir: "{{ kolla_dir }}"
+      extra_args: "--disable-pip-version-check"

@@ -1,0 +1,43 @@
+---
+  - name: Create proxy settings for images
+    template: "src=proxy.j2 dest={{ item }} owner=root group=root mode=0644"
+    when: '"http_proxy" in proxy_env or "https_proxy" in proxy_env'
+    with_items:
+      - "{{ kolla_dir }}/.header"
+
+  - name: Copy footer file to kolla to unset any proxy settings
+    copy: "src=footer dest={{ kolla_dir }}/.footer owner=root group=root"
+
+  - name: Create kolla generic settings
+    template:
+      src: onp_kolla_generic.conf.j2
+      dest: "{{ kolla_config_path }}/onp_kolla_generic.conf"
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Create kolla components specification file
+    template:
+      src: onp_kolla_components.conf.j2
+      dest: "{{ kolla_config_path }}/onp_kolla_components.conf"
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Create path for kolla_deploy image
+    file: "path={{ kolla_dir }}/docker/kolla-deploy state=directory"
+
+  - name: Copy kolla-deploy Dockerfile
+    copy: "src=Dockerfile.j2 dest={{ kolla_dir }}/docker/kolla-deploy owner=root group=root"
+
+  - name: Prepare kolla code from /root/kolla for kolla-deploy image
+    command: "tar --exclude=kolla.tar.gz -zcf {{ kolla_dir }}/docker/kolla-deploy/kolla.tar.gz -C /root kolla"
+
+  - debug: msg="Kolla build log file path is {{kolla_dir}}/{{ kolla_build_log_file }}"
+
+  - name: Run build, can take up to 2h. Progress trackable in above log file. Delete log file to make full rerun.
+    shell: "tools/build.py --config-dir {{ kolla_config_path }} &> {{ kolla_build_log_file }}"
+    args:
+      executable: /bin/bash
+      chdir: "{{ kolla_dir }}"
+      creates: "{{ kolla_build_log_file }}"

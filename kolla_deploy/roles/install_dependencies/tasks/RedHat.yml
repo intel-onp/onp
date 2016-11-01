@@ -1,0 +1,94 @@
+---
+  - name: Install EPEL if needed
+    action: "{{ ansible_pkg_mgr }} name=epel-release state=present"
+    when: ansible_distribution in ['RedHat', 'CentOS', 'ScientificLinux']
+
+
+  - name: Fedora 23 workaround installed python-dnf
+    raw: dnf -y -e0 -d0 install python python-dnf
+    when: ansible_distribution == "Fedora"
+
+#  - name: Fedora 23 workaround installed python-dnf
+#    action: setup
+#    when: ansible_distribution == "Fedora"
+
+  - name: Install core packages
+    # we need to recompile the kernel, but we don't need libvirtd it will
+    # run in a container
+    action: "{{ ansible_pkg_mgr }} name={{ item }} state=present"
+    with_items:
+      - deltarpm
+      - wget
+      - iptables-services
+      - lvm2
+      - lvm2-libs
+      - net-tools
+      # require python2 version of libselinux-python so ansible can operate in selinux enviroment
+      - libselinux-python
+      - screen
+      - psacct
+      - git
+      - socat
+      - ntp
+      - vim-enhanced
+      - vim
+      - libxslt-devel
+      - libffi-devel
+      - fuse-devel
+      - bridge-utils
+      - ebtables
+      # don't install kernel-devel here it will trigger unwanted kernel upgrade
+      # Mandatory Packages:
+      # Don't use yum groups, they don't work, expand them manually
+      # CentOS 'Development Tools' group
+      - autoconf
+      - automake
+      - binutils
+      - bison
+      - flex
+      - gcc
+      - gcc-c++
+      - gettext
+      - libtool
+      - make
+      - patch
+      - pkgconfig
+      - redhat-rpm-config
+      - rpm-build
+      - rpm-sign
+      - byacc
+      - cscope
+      - ctags
+      - diffstat
+      - doxygen
+      - elfutils
+      - git
+      - indent
+      - intltool
+      - patchutils
+      - rcs
+      - swig
+      - systemtap
+      # Fedora 'C Development Tools' group
+      - autoconf
+      - automake
+      - binutils
+      - bison
+      - flex
+      - gcc
+      - gcc-c++
+      - gdb
+      - glibc-devel
+      - libtool
+      - make
+      - pkgconfig
+      - strace
+      - byacc
+      #  don't use ccache, it can get weird for kernel compiles
+#      - ccache
+      - cscope
+      - ctags
+      - elfutils
+      - indent
+      - ltrace
+      - python-devel

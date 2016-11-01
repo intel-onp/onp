@@ -1,0 +1,25 @@
+---
+- hosts: kolla_build
+  vars_files:
+    - constants.yml
+    - kolla_version.yml
+    - onps_config.yml
+    - onps_commit_ids.yml
+  environment: "{{ proxy_env }}"
+
+  roles:
+    - get_docker_registry
+    - configure_ntp
+    - role: set_http_proxy
+      when: proxy_env
+      tags:
+        - proxy_setup
+    - role: docker
+      docker_storage_driver: devicemapper
+    - docker_python
+    - install_dependencies
+    - role: clone_kolla
+      kolla_repo: "{{ git_repos['KOLLA_REPO'] }}"
+      kolla_branch: "{{ git_repos['KOLLA_BRANCH'] }}"
+    - role: configure_kolla
+      kolla_config_path: "{{ kolla_dir }}/etc/kolla"

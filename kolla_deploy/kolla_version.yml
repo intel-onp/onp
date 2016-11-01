@@ -1,0 +1,6 @@
+---
+docker_registry_host: ""
+docker_registry_port: "4000"
+docker_registry: "{{ docker_hub }}"
+docker_namespace: "intelonp"
+openstack_release: "2.3.201610190134"

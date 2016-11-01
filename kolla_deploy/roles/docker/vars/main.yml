@@ -1,0 +1,8 @@
+---
+docker_project_url: https://yum.dockerproject.org
+docker_packages:
+  "RedHat":
+    - docker-engine-selinux-1.11.1
+    - docker-engine-1.11.1
+  "Debian":
+    - docker-engine

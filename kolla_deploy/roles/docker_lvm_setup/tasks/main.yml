@@ -1,0 +1,21 @@
+---
+  - name: clear loopback entries
+    command: "losetup -D -v"
+
+  - name: create thin provisioned backing store
+    command: "truncate -s {{ magnum_config.kubernetes['cinder_lvm_size'] }} {{ item }}"
+    with_items: "{{ cinder_lvm_file }}"
+
+  - name: losetup
+    command: "losetup -f --show {{ item }}"
+    register: cin_loop_dev
+    with_items: "{{ cinder_lvm_file }}"
+
+  - debug: var=cin_loop_dev.results[0]
+
+  - name: create cinder LVM loopback
+    lvg:
+      vg: "cinder-volumes"
+      pvs: "{{ item }}"
+    with_items: "{{ cin_loop_dev.results[0]['stdout'] }}"
+    when: cin_loop_dev is defined

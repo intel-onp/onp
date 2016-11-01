@@ -1,0 +1,48 @@
+---
+  - name: Make sure .ssh dir exists
+    command: "{{ d_magnum }} 'install -d -m 0755 ~/.ssh && sync'"
+
+  - name: Add keypair to nova
+    command: "{{ d_magnum }} 'nova keypair-add testkey > ~/.ssh/testkey.pem && sync'"
+
+  - name: chmod 0600 testkey.pem
+    command: "{{ d_magnum }} 'chmod 0600 ~/.ssh/testkey.pem'"
+
+  - name: Add neutron public network
+    command: "{{ d_magnum }} 'neutron net-create public --router:external --provider:physical_network physnet1 --provider:network_type flat'"
+
+  - name: Add neutron subnet for public
+    command: "{{ d_magnum }} 'neutron subnet-create --name public-subnet --disable-dhcp --allocation-pool start=172.24.4.150,end=172.24.4.199 public 172.24.4.0/24 --gateway 172.24.4.1'"
+
+  - name: Add security group rules for icmp
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol icmp --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for ssh
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 22 --port-range-max 22 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for heat cfn
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 8000 --port-range-max 8000 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for heat cfn
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 8080 --port-range-max 8080 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add small flavor
+    command: "{{ d_magnum }} 'openstack flavor create --id 2 --ram 2048 --disk 20 --vcpus 1 m1.small'"
+
+  - name: Add medium flavor
+    command: "{{ d_magnum }} 'openstack flavor create --id 3 --ram 4096 --disk 40 --vcpus 2 m1.medium'"
+
+  - name: Downloading atomic images
+    command: "{{ d_magnum }} 'curl -L -o /tmp/{{ atomic_file }} {{ magnum_guest_image }}'"
+
+  - name: Import image into glance
+    command: "{{ d_magnum }} 'glance image-create --name {{ atomic_name }} --progress --disk-format qcow2 --container-format bare --visibility public --os-distro {{ magnum_config.kubernetes['distro'] }} --file /tmp/{{ atomic_file }}'"
+
+  - name: Create Kubernetes base cluster template exaple
+    command: "{{ d_magnum }} 'magnum cluster-template-create --name k8s_demo --image-id {{ atomic_name }} --keypair-id testkey --external-network-id public --dns-nameserver {{magnum_config.default['dns_nameserver'] }} --flavor-id m1.small --docker-volume-size {{ magnum_config.default['docker_volume_size'] }} --network-driver flannel --labels flannel_backend=vxlan --coe {{ magnum_config.default['coe'] }} --master-flavor-id m1.medium'"
+
+  - include: k8s_cluster_proxy.yml
+    when: "proxy_env.http_proxy or proxy_env.https_proxy or proxy_env.no_proxy"
+
+  - name: Create Kubernetes bay
+    command: "{{ d_magnum }} ' magnum cluster-create --name k8s_bay123 --cluster-template k8s_demo --node-count {{ magnum_config.default['node_count'] }}'"

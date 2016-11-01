@@ -1,0 +1,8 @@
+---
+  - name: Include docker for RedHat
+    include: RedHat.yml
+    when: ansible_os_family == "RedHat"
+
+  - name: Include docker for Debian/Ubuntu
+    include: Debian.yml
+    when: ansible_os_family == "Debian"

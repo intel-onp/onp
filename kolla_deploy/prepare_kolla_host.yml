@@ -1,0 +1,53 @@
+---
+- hosts: compute:network:control
+  vars_files:
+    - constants.yml
+    - kernel_config.yml
+    - kolla_version.yml
+    - onps_config.yml
+  environment: "{{ proxy_env|calculate_no_proxy }}"
+
+  pre_tasks:
+    - set_fact:
+        proxy_env: "{{ proxy_env|calculate_no_proxy }}"
+
+  roles:
+    - get_docker_registry
+    - configure_network
+    # set http proxy as well before packages are installed, in case some package wants to wget, e.g. webupd8 java
+    - role: set_http_proxy
+      when: proxy_env
+      tags:
+        - proxy_setup
+    - role: set_package_installer_proxy
+      tags:
+        - proxy_setup
+      when: proxy_env
+     # docker_python may need pip_mirror (also easy_install mirror)
+    - role: pip_mirror
+      when: proxy_env or pip_mirror_url is defined
+    - install_dependencies
+    - check_virtualization
+    - disable_host_libvirt
+    - role: disable_host_iscsid
+      when: use_magnum
+    - configure_ntp
+    - configure_etc_hosts
+    - add_haproxy_firewall_rules
+    - role: increase_open_file_limits
+      # only on hosts running mariadb
+      # have to do this on host, containers cannot increase ulimit
+      when: "'mariadb' in group_names"
+    - docker
+    - docker_python
+    - calculate_kernel
+    - role: install_kernel
+      kernel_download_dir: "/root/kernel-rpms"
+    # compile driver now for new kernel
+    - role: use_intel_driver
+      target_kernel_version: "{{ kernel_data.kernel_version }}"
+      when: use_intel_driver|default(True)
+    - role: reboot_and_check_kernel_version
+      target_kernel_version: "{{ kernel_data.kernel_version }}"
+    - role: docker_lvm_setup
+      when: "'control' in group_names and use_magnum and magnum_config.kubernetes['cinder_backend'] == 'lvm'"

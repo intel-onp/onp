@@ -1,0 +1,11 @@
+---
+  - debug: var={{ node_info[groups['control'][0]].networks['inter'].interface }}
+
+  - name: enable snat via internet link
+    command: "iptables -t nat -A POSTROUTING -o {{ node_info[groups['control'][0]].networks['inter'].interface }} -j MASQUERADE"
+
+  - name: assign router gateway to br-ex (default magnum)
+    command: "ip addr add 172.24.4.1/24 dev br-ex"
+
+  - name: bring br-ex interface up
+    command: "ip link set dev br-ex up"

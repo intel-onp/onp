@@ -1,0 +1,8 @@
+---
+- hosts: control
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+
+  roles:
+    - magnum_update

@@ -1,0 +1,12 @@
+---
+  - name: Update http proxy in template
+    command: "{{ d_magnum }} 'magnum cluster-template-update k8s_demo replace http_proxy={{ proxy_env.http_proxy }}'"
+    when: proxy_env.http_proxy
+
+  - name: Update https proxy in template
+    command: "{{ d_magnum }} 'magnum cluster-template-update k8s_demo replace https_proxy={{ proxy_env.https_proxy }}'"
+    when: proxy_env.https_proxy
+
+  - name: Update no proxy in template
+    command: "{{ d_magnum }} 'magnum cluster-template-update k8s_demo replace no_proxy={{ proxy_env.no_proxy }}'"
+    when: proxy_env.no_proxy

@@ -1,0 +1,4 @@
+[DEFAULT]
+quota_volumes=20
+[lvm-1]
+iscsi_ip_address= {{ node_info[groups['control'][0]].networks['mgmt'].ip_address }}

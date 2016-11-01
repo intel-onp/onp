@@ -1,0 +1,8 @@
+---
+  - name: disable host iscsi
+    service: name="{{ iscsi_service[ansible_os_family] }}"  state=stopped enabled=no
+    ignore_errors: yes
+
+  - name: disable host iscsi socket
+    command: "systemctl disable {{ iscsi_service[ansible_os_family] }}.socket"
+    ignore_errors: yes

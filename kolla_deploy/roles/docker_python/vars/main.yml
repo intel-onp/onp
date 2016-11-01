@@ -1,0 +1,6 @@
+---
+# pin the version, don't use latest
+docker_python_version: 1.8.1
+get_pip_url: https://bootstrap.pypa.io/get-pip.py
+# version 7 is fine
+pip_minimum_version: [7, 1, 0]

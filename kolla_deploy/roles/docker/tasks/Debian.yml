@@ -1,0 +1,31 @@
+---
+  - name: add Ubuntu docker repo
+    apt_repository: repo='deb {{ ubuntu_docker_url }} ubuntu-{{ ansible_distribution_release }} main' state=present
+
+  - name: Create apt.conf.d/ no-GPG config
+    template:
+      src: no_gpg.j2
+      dest: "/etc/apt/apt.conf.d/21nogpg"
+
+  - name: ensure correct docker version
+    action: "{{ ansible_pkg_mgr }} name={{ item }} state=present"
+    with_items: "{{ docker_packages[ansible_os_family] }}"
+
+  - name: Delete no-GPG config
+    file: path=/etc/apt/apt.conf.d/21nogpg state=absent
+
+  - name: remove Ubuntu docker repo
+    apt_repository: repo='deb {{ ubuntu_docker_url }} ubuntu-{{ ansible_distribution_release }} main' state=absent
+
+  - name: create insecure registry config
+    lineinfile:
+      dest: /etc/default/docker
+      regexp: '^DOCKER_OPTS=.*'
+      line: 'DOCKER_OPTS="--insecure-registry {{ docker_registry }}"'
+      state: present
+    notify:
+     - restart docker
+    when: docker_registry != docker_hub
+
+  - name: start docker service
+    service: name=docker state=started enabled=yes

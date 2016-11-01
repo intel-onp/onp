@@ -1,0 +1,89 @@
+---
+  - name: set kolla_deploy_config_dir to tmpdir
+    set_fact:
+      # internet says to use default(..., true) because lookup returns empty string and not undefined
+      # so default needs to consider empty string to be false.
+      kolla_deploy_config_dir: "{{ lookup('env', 'TMPDIR')|default('/tmp', true) ~ '/kolla_deploy_' ~ groups['control'][0] }}"
+
+  - debug: msg="kolla deploy config dir = {{ kolla_deploy_config_dir }}"
+
+  - name: create kolla deploy config path
+    file: "path={{ kolla_deploy_config_dir }}/config/neutron state=directory"
+
+  - name: Start kolla-deploy container
+    docker_container:
+      name: kolla-deploy
+      image: "{{ docker_registry }}/{{ docker_namespace }}/centos-source-kolla-deploy:{{ openstack_release }}"
+      recreate: yes
+      state: started
+      restart_policy: always
+      env: "{{ proxy_env }}"
+      # have to use host in order to avoid ssh problems
+      network_mode: host
+      volumes:
+        - "{{ kolla_deploy_config_dir }}:/etc/kolla"
+        - /root/.ssh:/root/.ssh:ro
+
+  - name: create globals.yml config file
+    template:
+      src: globals.yml.j2
+      dest: "{{ kolla_deploy_config_dir }}/globals.yml"
+
+  - name: copy config files - passwords.yml
+    command: docker exec kolla-deploy cp /root/kolla/etc/kolla/passwords.yml /etc/kolla
+    args:
+      chdir: "{{ kolla_deploy_config_dir }}"
+      creates: pass_done
+
+  - name: generate passwords
+    shell: "docker exec kolla-deploy kolla-genpwd > pass_done"
+    args:
+      chdir: "{{ kolla_deploy_config_dir }}"
+      creates: pass_done
+
+  - name: update password with user defined
+    replace:
+      dest: "{{ kolla_deploy_config_dir }}/passwords.yml"
+      regexp: "^{{ item }}:.*"
+      replace: "{{ item }}: {{ vars[item] }}"
+    with_items:
+      - keystone_admin_password
+      - database_password
+      - horizon_secret_key
+      - rabbitmq_password
+
+  - name: generate network mappings
+    generate_network_mappings:
+      tenant_networks: "{{ node_info[groups['control'][0]].tenant_networks }}"
+    delegate_to: localhost
+
+  - debug: var=ovs_bridge_mapping
+  - debug: var=physical_network
+  - debug: var=vlan_interface
+  - debug: var=ovs_physical_bridge
+  - debug: var=m2_vlan_ranges
+
+  - name: create inventory file
+    template:
+      src: inventory.j2
+      dest: "{{ kolla_deploy_config_dir }}/inventory"
+
+  - name: copy nova.conf file
+    copy: "src=nova.conf dest={{ kolla_deploy_config_dir }}/config/nova.conf"
+
+  - name: copy l3_agent.ini file
+    copy: "src=l3_agent.ini dest={{ kolla_deploy_config_dir }}/config/neutron/l3_agent.ini"
+
+  - name: create neutron ml2_conf.ini file
+    template:
+      src: ml2_conf.ini.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/neutron/ml2_conf.ini"
+
+  - include: magnum.yml
+    when: use_magnum
+
+  - name: create ansible config path
+    command: docker exec kolla-deploy mkdir -p /etc/ansible
+
+  - name: copy ansible.cfg file to kolla-deploy container
+    command: "docker cp {{ role_path }}/files/ansible.cfg kolla-deploy:/etc/ansible"

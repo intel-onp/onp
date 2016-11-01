@@ -1,0 +1,4 @@
+search {{ node_info[inventory_hostname].networks.inter.dns['search'] }}
+{% for dns in node_info[inventory_hostname].networks.inter.dns['nameserver'] %}
+nameserver {{ dns }}
+{% endfor %}

@@ -1,0 +1,5 @@
+---
+iscsi_service:
+  Debian: open-iscsi
+  RedHat: iscsid
+

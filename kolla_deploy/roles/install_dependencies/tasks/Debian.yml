@@ -1,0 +1,60 @@
+---
+
+  - name: Install core packages
+    action: "{{ ansible_pkg_mgr }} name={{ item }} state=present"
+    with_items:
+      - build-essential
+      - wget
+      - screen
+      - procps
+      - git
+      - socat
+      - ntp
+      - vim-tiny
+      - libxslt1-dev
+      - libffi-dev
+      - libfuse-dev
+      - lvm2
+#      - glusterfs
+      - qemu-kvm
+      - libvirt0
+      - python-libvirt
+      - bridge-utils
+      - ebtables
+      - openssl
+      # apt-get build-dep linux-image-$(uname -r)
+      - asciidoc
+      - docbook-dsssl
+      - docbook-utils
+      - jadetex
+      - kernel-wedge
+      - libaudit-dev
+      - libdw-dev
+      - libdw1
+      - libelf-dev
+      - libiberty-dev
+      - libnewt-dev
+      - libostyle1c2
+      - libpci-dev
+      - libpotrace0
+      - libptexenc1
+      - libsgmls-perl
+      - libsp1c2
+#      - libsynctex1
+      - libudev-dev
+#      - libunwind-dev
+#      - libunwind8-dev
+      - libzzip-0-13
+      - makedumpfile
+      - openjade
+      - sgmlspl
+      - sp
+      - tex-common
+      - texlive-base
+      - texlive-binaries
+      - texlive-fonts-recommended
+      - texlive-generic-recommended
+      - texlive-latex-base
+      - texlive-latex-recommended
+      - tipa
+#      - xmlt

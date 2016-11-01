@@ -1,0 +1,4 @@
+---
+atomic_file: "{{ magnum_guest_image.split('/')|last|join() }}"
+atomic_name: "{{ atomic_file[:-6] }}"
+d_magnum: "docker exec magnum_conductor bash -l -c"

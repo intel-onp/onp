@@ -1,0 +1,8 @@
+---
+
+    - name: Update registry
+      shell: "tools/build.py --config-dir {{ update_config_dir }} &> {{ kolla_update_log_file }}"
+      args:
+        executable: /bin/bash
+        chdir: "{{ kolla_dir }}"
+        creates: "{{ kolla_update_log_file }}"

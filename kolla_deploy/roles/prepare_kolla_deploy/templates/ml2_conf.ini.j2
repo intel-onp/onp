@@ -1,0 +1,17 @@
+[ml2]
+extension_drivers = port_security
+tenant_network_types = {{ tenant_network_type }}
+
+{% if tenant_network_type == "vlan" and ovs_type == "ovs" %}
+[ml2_type_vlan]
+network_vlan_ranges = {{ m2_vlan_ranges }}
+
+{% endif %}
+[ovs]
+bridge_mappings = {% if tenant_network_type == "vlan" and ovs_type == "ovs" %} {{ ovs_bridge_mapping }} {% else %} physnet1:br-ex  {% endif %}
+
+{% if tenant_network_type == "vxlan" %}
+{% set entry_cur = "{{" %}
+{% set end_curl = "}}" %}
+local_ip = {{ entry_cur }} node_info[inventory_hostname].tunnel_ip {{ end_curl }}
+{% endif %}

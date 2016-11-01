@@ -1,0 +1,19 @@
+---
+- hosts: docker_registry
+  vars_files:
+    - constants.yml
+    - kolla_version.yml
+    - onps_config.yml
+  environment: "{{ proxy_env }}"
+
+  roles:
+    - get_docker_registry
+    - configure_ntp
+    - role: set_http_proxy
+      when: proxy_env
+      tags:
+        - proxy_setup
+    - role: docker
+      docker_storage_driver: devicemapper
+    - docker_python
+    - start_registry

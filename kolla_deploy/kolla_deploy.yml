@@ -1,0 +1,34 @@
+---
+- hosts: localhost
+  connection: local
+  vars_files:
+    - constants.yml
+    - kolla_version.yml
+    - onps_config.yml
+
+  # assumes proxy because we already installed ansible
+  roles:
+    - get_docker_registry
+    - role: docker
+      docker_storage_driver: devicemapper
+    - docker_python
+
+# need to split to trigger handles from docker role
+- hosts: localhost
+  connection: local
+  vars_files:
+    - constants.yml
+    - kolla_version.yml
+    - onps_config.yml
+
+  pre_tasks:
+    - set_fact:
+        run_datestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+    - set_fact:
+        local_log_dir: "{{ lookup('env', 'ANSIBLE_LOG_BASE')|default('.') }}/logs/{{ run_datestamp }}"
+    - set_fact:
+        proxy_env: "{{ proxy_env|calculate_no_proxy }}"
+
+  roles:
+    - prepare_kolla_deploy
+    - run_kolla_deploy

@@ -1,0 +1,9 @@
+---
+
+  - name: Include RedHat dependencies
+    include: RedHat.yml
+    when: ansible_os_family == "RedHat"
+
+  - name: Include Debian/Ubuntu dependencies
+    include: Debian.yml
+    when: ansible_os_family == "Debian"

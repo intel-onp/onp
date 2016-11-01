@@ -1,0 +1,4 @@
+---
+  - name: disable host libvirt so we don't conflict with container
+    service: name="{{ libvirt_service[ansible_os_family] }}"  state=stopped enabled=no
+    ignore_errors: yes

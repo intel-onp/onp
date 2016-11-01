@@ -1,0 +1,20 @@
+---
+- hosts: compute:network:control
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+
+  roles:
+    - role: enable_vlan_mode
+      when: tenant_network_type == "vlan"
+
+- hosts: control
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+
+  roles:
+    - role: configure_snat
+      when: "'control' in group_names and use_magnum"
+    - role: magnum_post
+      when: use_magnum

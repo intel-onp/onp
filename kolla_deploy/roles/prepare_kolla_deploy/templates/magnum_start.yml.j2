@@ -1,0 +1,35 @@
+#jinja2:  variable_start_string: "[%" , variable_end_string: "%]"
+---
+- name: Starting magnum-api container
+  kolla_docker:
+    action: "start_container"
+    common_options: "{{ docker_common_options }}"
+    image: "{{ magnum_api_image_full }}"
+    name: "magnum_api"
+    volumes:
+      - "{{ node_config_directory }}/magnum-api/:{{ container_config_directory }}/:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "kolla_logs:/var/log/kolla/"
+  when: inventory_hostname in groups['magnum-api']
+
+- name: Starting magnum-conductor container
+  kolla_docker:
+    action: "start_container"
+    common_options: "{{ docker_common_options }}"
+    image: "{{ magnum_conductor_image_full }}"
+    name: "magnum_conductor"
+    environment:
+      [% proxy_env|to_yaml(indent=6, default_flow_style=False)|indent(6, false) %]
+      OS_PROJECT_DOMAIN_NAME: default
+      OS_USER_DOMAIN_NAME: default
+      OS_PROJECT_NAME: admin
+      OS_TENANT_NAME: admin
+      OS_USERNAME: admin
+      OS_PASSWORD: password
+      OS_AUTH_URL: http://[% kolla_internal_vip_address %]:35357/v3
+      OS_IDENTITY_API_VERSION: 3
+    volumes:
+      - "{{ node_config_directory }}/magnum-conductor/:{{ container_config_directory }}/:ro"
+      - "/etc/localtime:/etc/localtime:ro"
+      - "kolla_logs:/var/log/kolla/"
+  when: inventory_hostname in groups['magnum-conductor']

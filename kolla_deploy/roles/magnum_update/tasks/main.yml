@@ -1,0 +1,3 @@
+---
+  - name: update kubernetes cluster nodes (minions)
+    command: "docker exec magnum_conductor bash -c 'magnum cluster-update --name k8s_bay123 replace node_count={{ magnum_config.default['node_count'] }}'"

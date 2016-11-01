@@ -1,0 +1,4 @@
+---
+libvirt_service:
+  Debian: libvirt-bin
+  RedHat: libvirtd

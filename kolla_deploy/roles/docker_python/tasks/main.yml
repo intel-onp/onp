@@ -1,0 +1,34 @@
+---
+# pip from distro is old
+#  - name: install pip
+#    action: "{{ ansible_pkg_mgr }} name=python-pip state=latest"
+
+  - name: get pip version
+    command: pip --version
+    register: get_installed_pip_version
+    ignore_errors: yes
+
+  - name: check pip version
+    set_fact:
+      pip_version_okay: "{{ get_installed_pip_version|succeeded and get_installed_pip_version.stdout.split()[1].split('.')|map('int')|list >= pip_minimum_version }}"
+
+  - name: install easy_install
+    action: "{{ ansible_pkg_mgr }} name={{item}} state=latest"
+    with_items:
+       - python-setuptools
+
+  # use wget because of https and proxies
+  - name: download get-pip.py
+    command: wget -nv "{{ get_pip_url }}"
+    register:  get_pip_download
+    when: not pip_version_okay
+
+  - debug: var=get_pip_download
+
+  - name: install pip
+    command: python get-pip.py
+    when: not pip_version_okay and get_pip_download|success
+
+  # pin the version, don't use latest
+  # disable version check to prevent extra https access
+  - pip: name=docker-py state=present version="{{ docker_python_version }}" extra_args="--disable-pip-version-check"

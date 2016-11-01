@@ -1,0 +1,16 @@
+---
+  - name: create magnum start proxy environment file
+    template:
+      src: magnum_start.yml.j2
+      dest: "{{ kolla_deploy_config_dir }}/magnum_start.yml"
+    when: proxy_env
+
+  - name: copy magnum_start if using proxy
+    command: "docker cp {{ kolla_deploy_config_dir }}/magnum_start.yml kolla-deploy:/usr/share/kolla/ansible/roles/magnum/tasks/start.yml"
+    when: proxy_env
+
+  - name: create cinder iscsi ip conf.ini file
+    template:
+      src: cinder.conf.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/cinder.conf"
+    when: "magnum_config.kubernetes['cinder_backend'] == 'lvm'"
