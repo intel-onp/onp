@@ -1,0 +1,33 @@
+#jinja2: lstrip_blocks: True
+
+auto {{ item.value.interface }}
+{# vxlan requires overridding regular network config #}
+{% if use_odl or (ovs_type == "ovs" and tenant_network_type == "vxlan") %}
+# for vxlan and/or odl, set an IP address on the tenant network
+# for tenant network, bootproto should be static, tunnel_ip from onps_config is used for this ip address
+iface {{ item.value.interface }} inet static
+address {{ node_info[inventory_hostname].tunnel_ip }}
+netmask {{ node_info[inventory_hostname].tunnel_prefix|prefix_to_netmask }}
+{% else %}
+
+    {% if item.value.boot_protocol == 'static' %}
+iface {{ item.value.interface }} inet static
+address {{ item.value.ip_address }}
+
+        {% if item.value.prefix is defined %}
+{# use python custom Jinaj2 filter to convert prefix to netmask #}
+netmask {{ item.value.prefix|prefix_to_netmask }}
+        {% endif %}
+
+        {% if item.value.default_route is defined %}
+gateway {{ item.value.default_route }}
+        {% endif %}
+
+    {% elif item.value.boot_protocol == 'dhcp' %}
+iface {{ item.value.interface }} inet dhcp
+    {% else %}
+iface {{ item.value.interface }} inet manual
+    {% endif %}
+
+{% endif %}
+

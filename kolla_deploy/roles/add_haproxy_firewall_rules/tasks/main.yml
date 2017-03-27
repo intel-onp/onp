@@ -1,0 +1,60 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+---
+  - name: create iptables_rules_to_add script from template
+    template: "src=iptable_rules_to_add.j2 dest=/etc/iptable_rules_to_add mode=0755"
+
+  - name: show haproxy rules
+    command: cat /etc/iptable_rules_to_add
+
+  - name: check backup /etc/iptable_rules.orig
+    stat: path=/etc/iptable_rules.orig
+    register: backup_iptables_rules_orig_stat
+
+  - name: backup iptables_rules
+    shell: iptables-save > /etc/iptable_rules.orig
+    when: not backup_iptables_rules_orig_stat.stat.exists
+
+  - name: restore original iptables rules from /etc/iptable_rules.orig
+    shell: iptables-restore < /etc/iptable_rules.orig
+
+  - name: add haproxy rules from /etc/iptable_rules_to_add
+    shell: /etc/iptable_rules_to_add
+
+  - name: save iptables to /etc/sysconfig/iptables
+    command: /usr/libexec/iptables/iptables.init save
+    when: ansible_os_family == "RedHat"
+
+  - name: start iptables service
+    service: name=iptables enabled=yes state=started
+    when: ansible_os_family == "RedHat"
+
+  - name: create directory
+    file: path=/etc/iptables state=directory
+    when: ansible_os_family == "Debian"
+
+  - name: save iptables for Ubuntu
+    shell: iptables-save > /etc/iptables/rules.v4
+    when: ansible_os_family == "Debian"

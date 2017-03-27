@@ -1,0 +1,108 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+---
+  - name: set local dpdk directory path
+    set_fact:
+      dpdk_dir: "/root/dpdk"
+
+  - name: Clone DPDK
+    git:
+      repo: "{{ git_repos['DPDK_REPO'] }}"
+      dest: "{{ dpdk_dir }}"
+      version: "{{ git_repos['DPDK_BRANCH'] }}"
+      update: no
+      force: yes
+    register: dpdk_changed
+
+  - name: Build DPDK kernel modules
+    make:
+      chdir: "{{ dpdk_dir }}"
+      target: install
+      params:
+        T: x86_64-native-linuxapp-gcc
+        DESTDIR: /
+
+  - name: Refresh module dependencies
+    command: depmod -a
+
+  - name : insert igb_uio kernel module
+    modprobe: name=igb_uio
+
+  - name: get network interface address to bind
+    command: bash -c "ls -al /sys/class/net/{{ node_info[inventory_hostname].tenant_networks['virtual-1'].interface }} | awk '$0 ~ /pci/ {n=split($NF,a,\"/\"); print a[n-2] }'"
+    register: tenant_network_interface_address
+
+  - name: bind nic to igb_uio
+    command: bash -c "{{ dpdk_dir }}/tools/dpdk-devbind.py --bind igb_uio {{ tenant_network_interface_address.stdout }}"
+
+  - name: get hugepage size
+    command: bash -c "grep Hugepagesize /proc/meminfo | awk '{ print $2 }'"
+    register: hugepage_result
+
+  - name: assign hugepage size
+    set_fact:
+      hugepage_size: "{{ hugepage_result.stdout }}"
+
+  - name: get hugepage directories
+    find:
+      paths: "/sys/devices/system/node"
+      patterns: "node?"
+      file_type: "directory"
+    register: node_paths
+
+  - name: compute hugepages if auto
+    set_fact:
+      ovs_hugepages_to_set: "{{ [((ansible_memtotal_mb - reserved_mem_mb) / (ansible_processor_count * ovs_huge_page_size_mb))|int if ((ansible_memtotal_mb - reserved_mem_mb) / (ansible_processor_count * ovs_huge_page_size_mb))|int, max_num_hugepages]|min }}"
+    when: ovs_num_hugepages == "auto"
+
+  - name: set hugepages
+    set_fact:
+      ovs_hugepages_to_set: "{{ ovs_num_hugepages }}"
+    when: ovs_num_hugepages != "auto"
+
+  - name: allocate hugepages
+    command: bash -c "echo {{ ovs_hugepages_to_set }} > {{ item.path }}//hugepages/hugepages-{{ hugepage_size }}kB/nr_hugepages"
+    with_items: "{{ node_paths.files|default([]) }}"
+
+  - name: calculate socket memory
+    set_fact:
+      dpdk_socket_mem: "{% set comma = joiner(\",\") %}{% for node in node_paths.files %}{{ comma() }}2048{% endfor %}"
+
+  - name: Mount hugepages fs
+    mount:
+      name: /dev/hugepages
+      fstype: hugetlbfs
+      src: nodev
+      state: mounted
+      opts: "pagesize={{ ovs_huge_page_size_mb }}M"

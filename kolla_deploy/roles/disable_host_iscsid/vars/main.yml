@@ -1,0 +1,14 @@
+---
+iscsi_service:
+  Debian:
+  - iscsid
+  - open-iscsi
+  RedHat:
+  - iscsid
+
+iscsi_service_socket:
+  Debian:
+  - iscsid
+  - open-iscsi
+  RedHat:
+  - iscsid.socket

@@ -1,0 +1,15 @@
+clouds:
+  demoproject:
+    identity_api_version: 3
+    auth:
+      auth_url: http://{{ kolla_external_vip_address }}:{{ keystone_ext_port|default('35357') }}
+      username: demo
+      password: password
+      project_name: demo
+  adminproject:
+    identity_api_version: 3
+    auth:
+      auth_url: http://{{ kolla_external_vip_address }}:{{ keystone_ext_port|default('35357') }}
+      username: admin
+      password: {{ keystone_admin_password }}
+      project_name: admin

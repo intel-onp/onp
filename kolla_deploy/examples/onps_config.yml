@@ -1,0 +1,418 @@
+---
+
+# ovs datapath type, change to the desired values
+# note: the following are default values
+ovs_datapath_type: netdev
+
+# Dual socket platform with 16GB RAM,3072*2048kB hugepages leaves ~4G for the system.
+# Dual socket platform with 64GB RAM,14336*2048kB hugepages leaves ~6G for the system.
+# Use 8192 by default
+ovs_num_hugepages: 8192
+
+# or use 'auto' to calculate based on the follow formula
+# ovs_num_hugepages = (ansible_memtotal_mb - reserved_mem_mb) / (ansible_processor_count * ovs_huge_page_size_mb)
+max_num_hugepages: 8192
+# 2 MB
+ovs_huge_page_size_mb: 2
+# 12GB, must be int
+reserved_mem_mb: 12288
+
+# max db connections
+# default is 200, increase to 1024
+max_db_connections: 1024
+
+# use ODL (OpenDaylight) in Openstack or not
+#    use_odl: false (no ODL will be installed)
+#    use_odl: true (ODL will be installed as network controller)
+# NOT SUPPORTED with Kolla Deployment
+#
+#   Choose release/snapshot from the following.
+#   Snapshots will continue to rotate as they are meant to be DEV
+#
+#   boron-snapshot-0.5.0 (master)
+#   beryllium-snapshot-0.4.2
+#   beryllium-0.4.1-SR1
+#   beryllium-0.4.0
+#   lithium-snapshot-0.3.5 (stable/lithium)
+#   lithium-0.3.4-SR4      (SR4)
+#   lithium-0.3.3-SR3      (SR3)
+#   lithium-0.3.2-SR2      (SR2)
+#   lithium-0.3.1-SR1      (SR1)
+#   helium-0.2.3-SR3
+
+use_odl: false
+odl_release: beryllium-0.4.0
+odl_netvirt_debug_level: "False"
+
+# odl-mode for controller
+#    odl_mode: allinone (odl is set, downloaded, configured and started)
+#    odl_mode: externalodl (odl is set but not downloaded, configured and started)
+#    odl_mode: manual (odl is not set up at all, untested)
+# note: default is allinone
+# NOT SUPPORTED with Kolla Deployment
+odl_mode: allinone
+
+# select one of the ovs types:
+#    ovs (regular ovs)
+#    ovs-dpdk (accelerated ovs)
+# note: default is ovs
+ovs_type: ovs
+
+# Openstack tenant network type, select one of the network types
+#    vxlan
+#    vlan
+# note: default is vxlan
+tenant_network_type: vxlan
+
+# Use these options to set the various log levels across all OpenStack projects
+# Valid options are [ True, False ]
+openstack_logging_debug: False
+
+# use Intel Cache Monitoring Technology/Cache Allocation Technology or not
+#  use_cat_cmt: false (CAT/CMT module will not be installed)
+#  use_cat_cmt: true (CAT/CMT module will be installed)
+#  NOT SUPPORTED with Kolla Deployment
+use_cat_cmt: false
+
+# list of user defined NTP server names or IP addresses
+# note: leave it empty if no user defined NTP server
+# Example
+#ntp_server_names:
+#  - 0.fedora.pool.ntp.org
+#  - 1.fedora.pool.ntp.org
+#  - 2.fedora.pool.ntp.org
+#  - 3.fedora.pool.ntp.org
+
+#ntp_server_names:
+#  -
+
+keystone_admin_password: "password"
+database_password: "password"
+service_password: "password"
+service_token: "no-token-password"
+horizon_secret_key: "password"
+rabbitmq_password: "password"
+
+# Ceilometer - telemetry
+use_ceilometer: false
+
+# Service Function Chaining (SFC) is a mechanism for overriding the basic destination
+# based forwarding that is typical of IP networks.  Fundamentally SFC is the ability to cause
+# network packet flows to route through a network via a path other than the one that would be chosen
+# by routing table lookups on the packet's destination IP address. It is most commonly used in
+# conjunction with Network Function Virtualization when recreating in a virtual environment
+# a series of network functions that would have traditionally been implemented as a
+# collection of physical network devices connected in series by cables.
+# NOT SUPPORTED with Kolla Deployment
+use_networking_sfc: false
+
+# use Neutron LBAAS (LoadBalances as a service) in Openstack or not
+# NOTE: this take effect only without ODL (use_odl: false)
+#    use_neutron_lbaas: false (no Neutron LBAAS will be installed)
+#    use_neutron_lbaas: true (Neutron LBAAS will be installed if no ODL,
+#                             or ODL LBASS will be configured if use_odl is true)
+# note: default is false
+# NOT SUPPORTED with Kolla Deployment
+use_neutron_lbaas: false
+
+# use Swift object storage as Glance backend
+# NOTE: this is needed for HA configuration with two or more controllers
+#    use_swift: false (local filesystem is used as Glance backend)
+#    use_swift: true (Swift object storage is used as Glance backend instead of local filesystem)
+# note: default is false
+use_swift: false
+
+# empty disk where swift rings will be created
+# disk_for_swift variable have to be set properly if use_swift is true. E.g.:
+#disk_for_swift: "/dev/sdb"
+
+# use Neutron FWAAS (Firewall as a service) in Openstack or not
+#    use_neutron_fwaas: false (no Neutron FWAAS will be installed)
+#    use_neutron_fwaas: true (Neutron FWAAS will be installed)
+# note: default is false
+# NOT SUPPORTED with Kolla Deployment
+use_neutron_fwaas: false
+
+# Magnum
+# Fedora atomic (Ocata): "https://fedorapeople.org/groups/magnum/fedora-atomic-ocata.qcow2"
+# Fedora atomic latest: "https://fedorapeople.org/groups/magnum/fedora-atomic-latest.qcow2"
+#
+# Do not use magnum with kuryr_kubernetes, either or
+use_magnum: false
+#magnum_guest_image: "https://fedorapeople.org/groups/magnum/fedora-atomic-ocata.qcow2"
+#Public network info to be used by magnum E.g.:
+#It should be subnet/gw used by mgmt inteface
+#magnum_external_net_gw_ip_cidr: "192.168.31.1/24"
+#magnum_external_net_pool_start: "100"
+#magnum_external_net_pool_end: "199"
+
+
+magnum_config:
+  default:
+    coe: kubernetes # kubernetes(default), swarm, mesos
+    dns_nameserver: 8.8.8.8
+    node_count: 5
+    docker_volume_size: 5
+  kubernetes:
+    distro: fedora-atomic # coreos-atomic
+
+# cinder configuration
+# cinder NFS and LVM enabled by default
+use_cinder: true
+cinder_backend: nfs # nfs, lvm, ceph
+cinder_lvm_size: 100g
+
+# Openstack defaults
+os_defaults:
+  images: "https://download.fedoraproject.org/pub/fedora/linux/releases/25/CloudImages/x86_64/images/Fedora-Cloud-Base-25-1.3.x86_64.qcow2"
+  networks:
+    int:
+      cidr: "10.0.0.0/24"
+      gateway: "10.0.0.1"
+      dns_nameservers: "8.8.8.8"
+    ext:
+      cidr: "192.168.31.0/24"
+      allocation_start: "100"
+      allocation_end: "199"
+      gateway: "192.168.31.1"
+
+# kuryr-kubernetes configuration
+# macvlan implementation
+# Do not use magnum with kuryr_kubernetes, either or
+use_kuryr_kubernetes: false
+
+#### if HTTP/HTTPS proxy is used specify proxy settings below
+
+# require empty dict by default
+proxy_env: {}
+
+## if proxies are needed set them in proxy_env dictionary
+# HTTP proxy full URL
+# !!!! NOTE ansible does not support https:// for https_proxy, only http://
+# Configure socks proxy if required for git:// protocol
+# If in proxy env, uncomment no_proxy as its used to make exceptions and specify,
+#  which domains or IP addresses should be reached directly
+
+#proxy_env:
+#  http_proxy: http://proxy.example.com:8080
+#  https_proxy: http://proxy.example.com:8080
+#  socks_proxy: http://proxy.example.com:1080
+#  no_proxy: "localhost,{{ inventory_hostname }}"
+
+# If you wish for devstack to use a local mirror for the cirros-0.3.4-x86_64-uec.tar.gz image, define it here
+#cirros_image_url:
+
+# If you wish for devstack to use a local devpi pypi caching mirror, define it here
+# must be define, empty by default
+pip_mirror_url: ""
+
+# Devstack installs the latest pip from upstream
+# If you wish to use a local mirror, define the get-pip.py url here
+#get_pip_url: https://bootstrap.pypa.io/get-pip.py
+
+# subnet to use for public network leave blank for default
+#public_net_subnet: 10.0.0.0/8
+
+# pool of IPs within public_net_subnet to be used (e.g., start=A.B.C.100,end=A.B.C.200)
+# leave blank to use the whole public_net_subnet
+#public_net_subnet_allocation_pool:
+
+# IP address for the public network gateway
+# this IP must be accessible from public_net_subnet, leave blank for default
+#public_net_gateway:
+
+# This should be a VIP, an unused IP on your 'mgmt' network that will float between
+# the hosts running keepalived for high-availability.
+# Option required only for kolla deployment.
+kolla_internal_vip_address: 192.168.11.199
+# This should be a VIP, an unused IP on your 'inter' network that will float between
+# the hosts running keepalived for high-availability.
+# Specify a kolla_external_vip_address to separate internal and external
+# requests between two VIPs.
+kolla_external_vip_address: "{{ kolla_internal_vip_address }}"
+
+######
+# Openstack network topology
+# define all your compute and control node here
+# The name must match the hostname in the inventory
+node_info:
+  # must match control node hostname in inventory and is not an IP address
+  # hostnames cannot contain underscores
+  control-1.example.com:
+    # when VXLAN is used, tunnel_ip is used as the IP address of the tunnel bridge
+    # if odl is used, it does not need IP address for the bridge; instead, it needs an IP address for tenant network interface.
+    # tunnel_ip is used either as the address of the bridge if odl is not used, or as the address of the tenant network interface if odl is running.
+    # Note that this address should use a different network from management network.
+    tunnel_ip: 172.16.1.10
+    tunnel_prefix: 24
+    tenant_bonded: false
+    networks:
+      mgmt:
+        # network interface (e.g, em1) - for management network, using static address
+        # enter IP address and netmask for this interface
+        interface: eth1
+        boot_protocol: static
+        ip_address: 192.168.11.10
+        prefix: 24
+      inter:
+        # network interface (e.g., em2)- for Internet network, it will have dhcp address
+        interface: eth0
+        boot_protocol: dhcp
+        #nm_controlled: no
+        #ip_address: 192.168.11.10
+        #prefix: 24
+        #gateway: 192.168.11.1
+        #dns:
+          #search:
+          #nameserver:
+            #- 8.8.8.8
+            #- 8.8.8.8
+      public:
+        # network interface (e.g., p1p2)- for public network, it will have no address
+        interface: eth4
+        boot_protocol: none
+    tenant_networks:
+      # tenant network interfaces should not have an address, if needed tunnel_ip will be configured
+      # by these scripts
+      virtual-1:
+        interface: eth2
+        boot_protocol: none
+        vlan_ranges: 1000:1009
+      virtual-2:
+        interface: eth3
+        boot_protocol: none
+        vlan_ranges: 1010:1019
+  # must match compute node hostname in inventory and is not an IP address
+  compute-1.example.com:
+    tunnel_ip: 172.16.1.11
+    tunnel_prefix: 24
+    tenant_bonded: false
+    networks:
+      mgmt:
+        # network interface (e.g, em1) - for management network, using static address
+        # enter IP address and netmask for this interface
+        interface: eth1
+        boot_protocol: static
+        ip_address: 192.168.11.11
+        prefix: 24
+      inter:
+        # network interface (e.g., em2)- for Internet network, it will have dhcp address
+        interface: eth0
+        boot_protocol: dhcp
+        #nm_controlled: no
+        #ip_address: 192.168.11.10
+        #prefix: 24
+        #gateway: 192.168.11.1
+        #dns:
+          #search:
+          #nameserver:
+            #- 8.8.8.8
+            #- 8.8.8.8
+      public:
+        # network interface (e.g., p1p2)- for public network, it will have no address
+        interface: eth4
+        boot_protocol: none
+    tenant_networks:
+      # tenant network interfaces should not have an address, if needed tunnel_ip will be configured
+      # by these scripts
+      virtual-1:
+        interface: eth2
+        boot_protocol: none
+        vlan_ranges: 1000:1009
+      virtual-2:
+        interface: eth3
+        boot_protocol: none
+        vlan_ranges: 1010:1019
+##  Add extra compute nodes here
+#  compute-2.example.com:
+#    tunnel_ip:
+#    tunnel_prefix:
+#    tenant_bonded: false
+#    networks:
+#      mgmt:
+#        # network interface (e.g, em1) - for management network, using static address
+#        # enter IP address and netmask for this interface
+#        interface:
+#        boot_protocol:
+#        ip_address:
+#        prefix:
+#      inter:
+#        # network interface (e.g., em2)- for Internet network, it will have dhcp address
+#        interface:
+#        boot_protocol:
+#        #nm_controlled: no
+#        #ip_address: 192.168.11.10
+#        #prefix: 24
+#        #gateway: 192.168.11.1
+#        #dns:
+#          #search:
+#          #nameserver:
+#            #- 8.8.8.8
+#            #- 8.8.8.8
+#      public:
+#        # network interface (e.g., p1p2)- for public network, it will have no address
+#        interface:
+#        boot_protocol:
+#    tenant_networks:
+#      # tenant network interfaces should not have an address, if needed tunnel_ip will be configured
+#      # by these scripts
+#      virtual-1:
+#        interface:
+#        boot_protocol:
+#        vlan_ranges:
+#      virtual-2:
+#        interface:
+#        boot_protocol:
+#        vlan_ranges:
+#  compute-bonded-3.example.com:
+#    tunnel_ip:
+#    tunnel_prefix:
+#    tenant_bonded: true
+#    networks:
+#      mgmt:
+#        # network interface (e.g, em1) - for management network, using static address
+#        # enter IP address and netmask for this interface
+#        interface:
+#        boot_protocol:
+#        ip_address:
+#        prefix:
+#      inter:
+#        # network interface (e.g., em2)- for Internet network, it will have dhcp address
+#        interface:
+#        boot_protocol:
+#        #nm_controlled: no
+#        #ip_address: 192.168.11.10
+#        #prefix: 24
+#        #gateway: 192.168.11.1
+#        #dns:
+#          #search:
+#          #nameserver:
+#            #- 8.8.8.8
+#            #- 8.8.8.8
+#      public:
+#        # network interface (e.g., p1p2)- for public network, it will have no address
+#        interface:
+#        boot_protocol:
+#    tenant_networks:
+#      # in case tenant is bonded, bond_masters should be specified here
+#      virtual-1:
+#        interface: bond0
+#        boot_protocol: none
+#        vlan_ranges: 1000:1009
+#        # in case tenant is bonded special parameters should be defined
+#        bond_mode: 4         # value of 4 means LACP
+#        bond_miimon: 100     # value of 100 is suitable for LACP
+#        # in case of vlan bond_ip should be specified
+#        # bond interface must have an ip in every case
+#        # in case of vxlan is tunnel_ip used
+#        bond_ip:
+#        bond_prefix:
+#    bond_slaves:
+#      slave-1:
+#        interface: eth2
+#        boot_protocol: none
+#        bond_master: bond0
+#      slave-2:
+#        interface: eth3
+#        boot_protocol: none
+#        bond_master: bond0

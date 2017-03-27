@@ -1,0 +1,16 @@
+#jinja2: lstrip_blocks: True
+
+iptables -N HAPROXY_rules
+
+iptables -A INPUT -p 112 -j HAPROXY_rules
+
+{% for host in play_hosts %}
+{% if network_interface is defined and network_interface == node_info[host].networks['mgmt'].interface %}
+iptables -A HAPROXY_rules -p 112 -s {{ node_info[host].networks['mgmt'].ip_address }} -j ACCEPT
+{% else %}
+iptables -A HAPROXY_rules -p 112 -s {{ hostvars[host]['ansible_default_ipv4']['address'] }} -j ACCEPT
+{% endif %}
+{% endfor %}
+
+iptables -A HAPROXY_rules -p 112 -j REJECT --reject-with icmp-host-prohibited
+

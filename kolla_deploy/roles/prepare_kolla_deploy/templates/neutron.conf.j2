@@ -1,0 +1,8 @@
+[DEFAULT]
+global_physnet_mtu = 1400
+
+{% if use_kuryr_kubernetes %}
+max_allowed_address_pair = 50
+[securitygroup]
+firewall_driver = neutron.agent.firewall.NoopFirewallDriver
+{% endif %}

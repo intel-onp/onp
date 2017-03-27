@@ -1,0 +1,206 @@
+# Copyright (c) 2017, Intel Corporation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{% extends parent_template %}
+
+{% macro sed(file='', expressions=[]) -%}
+
+RUN /bin/true ; {% for expression in expressions %} sed -i "{{ file }}" -e "{{ expression }}" && {% endfor %} /bin/true
+
+{%- endmacro %}
+
+{% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+    {% set release_cflags = '$(rpm --eval \'%optflags\')' %}
+    {% set release_ldflags = "" %}
+{% elif base_distro in ['ubuntu', 'debian'] %}
+    {% set release_cflags = '$(dpkg-buildflags --get CFLAGS)' %}
+    {% set release_ldflags = '$(dpkg-buildflags --get LDFLAGS)' %}
+{% else %}
+    {% set release_cflags = "" %}
+    {% set release_ldflags = "" %}
+{% endif %}
+
+
+####################################################################
+#         ovs source build override section
+####################################################################
+
+# compile ovs
+
+{% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+    {% set openvswitch_build_packages = [
+        'redhat-rpm-config',
+        'redhat-lsb-core',
+        'pciutils',
+        'autoconf',
+        'libtool',
+        'fuse-devel',
+        'gcc',
+        'make',
+        'autoconf',
+        'automake',
+        'libpcap-devel',
+        'python-devel',
+        'python-six'
+     ] %}
+
+    {% set openvswitch_remove_packages = ['openvswitch'] %}
+
+{% elif base_distro in ['ubuntu', 'debian'] %}
+
+    {% set openvswitch_build_packages = [
+        'fdutils',
+        'libxtst6',
+        'libnuma-dev',
+        'autoconf',
+        'automake',
+        'libtool',
+        'libfuse-dev',
+        'gcc',
+        'make',
+        'build-essential',
+        'libpcap-dev',
+        'python-dev',
+        'python-six'
+    ] %}
+
+    {% set openvswitch_remove_packages = ['openvswitch-switch'] %}
+
+{% endif %}
+
+{% set openvswitch_base_packages_override = openvswitch_build_packages %}
+{% set openstack_base_packages_append = openvswitch_build_packages %}
+
+{% set manila_base_packages_remove = openvswitch_remove_packages %}
+{% set neutron_base_packages_remove = openvswitch_remove_packages %}
+{% set neutron_openvswitch_agent_packages_remove = openvswitch_remove_packages %}
+{% set nova_base_packages_remove = openvswitch_remove_packages %}
+{% set nova_compute_packages_remove = openvswitch_remove_packages %}
+
+{% macro openvswitch_build(additional_params='') %}
+RUN cd /ovs && \
+    ./boot.sh && \
+    bash -c 'CFLAGS="{{ release_cflags }} -O3 -fPIC" LDFLAGS="{{ release_ldflags }}" ./configure {{ additional_params }} --prefix=/usr --with-dbdir=/etc/openvswitch --with-rundir=/run/openvswitch' && \
+    make -j $(nproc) && \
+    make install
+{% endmacro %}
+
+{% block openvswitch_base_footer %}
+ADD openvswitch-base-archive /openvswitch-base-source
+RUN ln -s /openvswitch-base-source/* /ovs
+{{ openvswitch_build() }}
+{% endblock %}
+
+{% block openstack_base_footer %}
+ADD plugins-archive /
+RUN ln -s /plugins/openstack-base-plugin-ovs-archive-*/ /ovs
+{{ openvswitch_build() }}
+RUN rm -rf /plugins
+{% endblock %}
+
+####################################################################
+#         ovs-dpdk source build override section
+####################################################################
+
+# compile ovs
+{% block  ovsdpdk_install %}
+
+{% set ovs_dpdk_packages = openvswitch_build_packages %}
+
+{{ macros.install_packages(ovs_dpdk_packages | customizable("packages")) }}
+
+ADD ovsdpdk-archive /ovsdpdk-source
+ADD plugins-archive /
+RUN ln -s /ovsdpdk-source/* /ovs && ln -s /plugins/ovsdpdk-plugin-dpdk-archive-*/ /dpdk
+WORKDIR /dpdk
+{% set RTE_TARGET='x86_64-native-linuxapp-gcc' %}
+RUN make config T="{{ RTE_TARGET }}"
+WORKDIR "/dpdk/build"
+
+{{ sed( file="/dpdk/build/.config", expressions=["s/CONFIG_RTE_BUILD_COMBINE_LIBS=n/CONFIG_RTE_BUILD_COMBINE_LIBS=y/",
+                                     "s/CONFIG_RTE_MAX_MEMSEG=.*$/CONFIG_RTE_MAX_MEMSEG=1024/",
+                                     "s/CONFIG_RTE_LIBRTE_VHOST=.*$/CONFIG_RTE_LIBRTE_VHOST=y/",
+                                     "s/CONFIG_RTE_LIBRTE_KNI=.*$/CONFIG_RTE_LIBRTE_KNI=n/",
+                                     "s/CONFIG_RTE_KNI_KMOD=.*$/CONFIG_RTE_KNI_KMOD=n/",
+                                     "s/CONFIG_RTE_EAL_IGB_UIO=.*$/CONFIG_RTE_EAL_IGB_UIO=$y/",
+                                     "s/CONFIG_RTE_BUILD_SHARED_LIB=.*$/CONFIG_RTE_BUILD_SHARED_LIB=n/",
+                                    ])
+}}
+
+RUN make -j $(nproc) EXTRA_CFLAGS='-fPIC' && \
+    make install
+{{ openvswitch_build('--with-dpdk="/dpdk/build"') }}
+
+{% endblock %}
+
+####################################################################
+#         collectd source build override section
+####################################################################
+
+{% if base_distro in ['centos', 'oraclelinux', 'rhel'] %}
+    {% set collectd_packages_override = [
+        'redhat-rpm-config',
+        'redhat-lsb-core',
+        'pciutils',
+        'autoconf',
+        'libtool',
+        'fuse-devel',
+        'gcc',
+        'make',
+        'autoconf',
+        'automake',
+        'bison',
+        'flex',
+        'libpcap-devel',
+        'python-devel',
+        'python-six',
+        'libtool-ltdl-devel',
+        'perl-devel',
+    ] %}
+
+{% elif base_distro in ['ubuntu', 'debian'] %}
+    {% set collectd_packages_override = [] %}
+
+{% endif %}
+
+
+{% block collectd_header %}
+RUN mkdir -p /var/lib/collectd /etc/collectd
+{% endblock %}
+
+{% block collectd_footer %}
+ADD collectd-archive /collectd-source
+ADD plugins-archive /
+RUN ln -s /collectd-source/* /collectd && ln -s /plugins/collectd-plugin-collecd-ceilometer-archive-*/ /collectd-ceilometer-plugin
+RUN cd /collectd && \
+    ./build.sh && \
+    bash -c 'CFLAGS="{{ release_cflags }} -O3 -fPIC" LDFLAGS="{{ release_ldflags }}" ./configure --enable-syslog --enable-plugin --enable-logfile --enable-debug --prefix=/usr' && \
+    make -j $(nproc) && \
+    make install && \
+    chown -R collectd /var/lib/collectd && \
+    chown -R collectd /etc/collectd* && \
+    chown -R collectd /var/run/
+{% endblock %}
+
+# TODO: Remove next WA in PIKE release
+# Review https://review.openstack.org/#/c/444498/ was merged to master (pike) on 15.3.2017
+# bug https://bugs.launchpad.net/kolla/+bug/1671923 is fixed upstream
+####################################################################
+#         NFS adaptations
+####################################################################
+
+# Add NFS utils to cinder_volume container
+{% if base_distro in ['ubuntu', 'debian'] %}
+    {% set cinder_volume_packages_append = ['nfs-common'] %}
+{% endif %}

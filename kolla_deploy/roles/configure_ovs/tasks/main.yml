@@ -1,0 +1,93 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+---
+  - modprobe:
+      name: openvswitch
+    name: insert openvswitch module for br-ex when dpdk is enabled
+    when: ovs_type == "ovs-dpdk"
+
+  - name: restart openvswitch_vswitchd
+    command: docker restart openvswitch_vswitchd
+    when: ovs_type == "ovs-dpdk"
+
+  - name: remove br-ex when dpdk is used
+    command: "docker exec openvswitch_db ovs-vsctl del-br br-ex"
+    when: ovs_type == "ovs-dpdk"
+
+  - name: add br-ex with system datapath for dpdk
+    command: docker exec openvswitch_db ovs-vsctl add-br br-ex -- set bridge br-ex datapath_type=system
+    when: ovs_type == "ovs-dpdk"
+
+  - command: "docker exec openvswitch_db /usr/local/bin/kolla_ensure_openvswitch_configured br-{{ item.value.interface }} {{ item.value.interface }}"
+    name: add virtual bridge
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when:
+      - tenant_network_type == "vlan"
+      - ovs_type != "ovs-dpdk"
+
+  - command: "docker exec openvswitch_db /usr/local/bin/kolla_ensure_ovsdpdk_configured br-{{ item.value.interface }} {{ item.value.interface }} netdev {{ ovs_core_mask }} {{ ovs_pmd_core_mask }} {{ dpdk_socket_mem}}"
+    name: add virtual bridge
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when: ovs_type == "ovs-dpdk"
+
+  - name: wait for ovs bridge
+    wait_for: path=/sys/class/net/br-{{ item.value.interface }}
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when: ovs_type == "ovs-dpdk"
+
+  - name: assign ip address to ovs bridges
+    # TODO this will work only when a single tenant network is configured.
+    # There is only one tunnel_ip per node. Probably needs to be moved under tenant_networks dictionary.
+    command: "ip addr add {{ node_info[inventory_hostname].tunnel_ip }}/{{ node_info[inventory_hostname].tunnel_prefix }} dev br-{{ item.value.interface }}"
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when:
+      - tenant_network_type == "vxlan"
+      - ovs_type == "ovs-dpdk"
+
+  - name: bring up ovs bridges
+    command: "ip link set br-{{ item.value.interface }} up"
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when:
+      - tenant_network_type == "vxlan"
+      - ovs_type == "ovs-dpdk"
+
+  - name: restart neutron_openvswitch_agent
+    command: docker restart neutron_openvswitch_agent
+    when: tenant_network_type == "vlan" or ovs_type == "ovs-dpdk"
+
+  - name: restart nova_compute to propagate hugepage settings
+    command: docker restart nova_compute
+    when:
+      - ovs_type == "ovs-dpdk"
+      - "'compute' in group_names"
+
+  - name: wait for br-int patch
+    command: "docker exec openvswitch_db ovs-vsctl list-ports br-{{ item.value.interface }}"
+    register: log_output
+    until: log_output.stdout.find("phy-br-") > -1
+    delay: 10
+    retries: 20
+    with_dict : "{{ node_info[inventory_hostname].tenant_networks }}"
+    when: tenant_network_type == "vlan"

@@ -1,0 +1,91 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+  - name: Add neutron public network
+    command: "{{ d_magnum }} 'neutron net-create public --router:external --provider:physical_network physnet1 --provider:network_type flat'"
+
+  - name: Add neutron subnet for public
+    command: "{{ d_magnum }} 'neutron subnet-create --name public-subnet --disable-dhcp --allocation-pool start={{ magnum_external_net_gw_ip_cidr | ipaddr(magnum_external_net_pool_start) | ipaddr('address') }},end={{ magnum_external_net_gw_ip_cidr | ipaddr(magnum_external_net_pool_end) | ipaddr('address') }} public {{ magnum_external_net_gw_ip_cidr | ipaddr('0') }} --gateway {{ magnum_external_net_gw_ip_cidr | ipaddr('address') }}'"
+
+  - name: Add security group rules for icmp
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol icmp --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for ssh
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 22 --port-range-max 22 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for heat cfn
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 8000 --port-range-max 8000 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add security group rules for heat cfn
+    command: "{{ d_magnum }} 'neutron security-group-rule-create default --direction ingress --ethertype IPv4 --protocol tcp --port-range-min 8080 --port-range-max 8080 --remote-ip-prefix 0.0.0.0/0'"
+
+  - name: Add heat_stack_owner into admin project
+    command: "{{ d_magnum }} 'openstack role add --user admin --project admin heat_stack_owner'"
+
+  - name: Add small flavor
+    command: "{{ d_magnum }} 'openstack flavor create --id 2 --ram 2048 --disk 20 --vcpus 1 m1.small'"
+
+  - name: Assign dpdk mem_page_size to small flavor
+    command: "{{ d_magnum }} 'nova flavor-key m1.small set \"hw:mem_page_size=large\"'"
+    when: ovs_type == "ovs-dpdk"
+
+  - name: Add medium flavor
+    command: "{{ d_magnum }} 'openstack flavor create --id 3 --ram 4096 --disk 40 --vcpus 2 m1.medium'"
+
+  - name: Assign dpdk mem_page_size to medium flavor
+    command: "{{ d_magnum }} 'nova flavor-key m1.medium set \"hw:mem_page_size=large\"'"
+    when: ovs_type == "ovs-dpdk"
+
+  - name: Downloading atomic images
+    command: "{{ d_magnum }} 'curl -L -o /tmp/{{ atomic_file }} {{ magnum_guest_image }}'"
+
+  - name: Import image into glance
+    command: "{{ d_magnum }} 'glance image-create --name {{ atomic_name }} --progress --disk-format qcow2 --container-format bare --visibility public --os-distro {{ magnum_config.kubernetes['distro'] }} --file /tmp/{{ atomic_file }}'"
+
+  - name: Create cinder volume type nfs
+    command: "{{ d_magnum }} 'cinder type-create nfs-1'"
+    when: "cinder_backend == 'nfs'"
+
+  - name: Create cinder volume type key nfs
+    command: "{{ d_magnum }} 'cinder type-key nfs-1 set volume_backend_name=nfs-1'"
+    when: "cinder_backend == 'nfs'"
+
+  - name: List cinder volume types
+    command: "{{ d_magnum }} 'cinder type-list'"
+    when: "cinder_backend == 'nfs'"
+
+  - name: List cinder volume type specs
+    command: "{{ d_magnum }} 'cinder extra-specs-list'"
+    when: "cinder_backend == 'nfs'"
+
+  - name: Create Kubernetes base cluster template example
+    command: "{{ d_magnum }} 'magnum cluster-template-create --name k8s_demo --image {{ atomic_name }} --keypair testkey --external-network public --dns-nameserver {{magnum_config.default['dns_nameserver'] }} --flavor m1.small --docker-volume-size {{ magnum_config.default['docker_volume_size'] }} --network-driver flannel --labels flannel_backend=vxlan --coe {{ magnum_config.default['coe'] }} --master-flavor m1.medium --volume-driver cinder --floating-ip-enabled'"
+
+  - include: k8s_cluster_proxy.yml
+    when: "proxy_env.http_proxy or proxy_env.https_proxy or proxy_env.no_proxy"
+
+  - name: Create Kubernetes bay
+    command: "{{ d_magnum }} ' magnum cluster-create --name k8s_bay123 --cluster-template k8s_demo --node-count {{ magnum_config.default['node_count'] }}'"

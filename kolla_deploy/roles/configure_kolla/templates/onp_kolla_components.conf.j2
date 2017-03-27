@@ -1,0 +1,233 @@
+[DEFAULT]
+tag = {{ openstack_release }}
+
+[aodh-base]
+type=git
+reference={{ git_repos['AODH_BRANCH'] }}
+location={{ git_repos['AODH_REPO'] }}
+
+[barbican-base]
+type=git
+reference={{ git_repos['BARBICAN_BRANCH'] }}
+location={{ git_repos['BARBICAN_REPO'] }}
+
+[bifrost-base]
+type=git
+reference={{ git_repos['BIFROST_BRANCH'] }}
+location={{ git_repos['BIFROST_REPO'] }}
+
+[ceilometer-base]
+type=git
+reference={{ git_repos['CEILOMETER_BRANCH'] }}
+location={{ git_repos['CEILOMETER_REPO'] }}
+
+[cinder-base]
+type=git
+reference={{ git_repos['CINDER_BRANCH'] }}
+location={{ git_repos['CINDER_REPO'] }}
+
+[cloudkitty-base]
+type=git
+reference={{ git_repos['CLOUDKITTY_BRANCH'] }}
+location={{ git_repos['CLOUDKITTY_REPO'] }}
+
+[collectd]
+type=git
+reference={{ git_repos['COLLECTD_BRANCH'] }}
+location={{ git_repos['COLLECTD_REPO'] }}
+
+[collectd-plugin-collecd-ceilometer]
+type=git
+reference={{ git_repos['COLLECTD_CEILOMETER_BRANCH'] }}
+location={{ git_repos['COLLECTD_CEILOMETER_REPO'] }}
+
+[congress-base]
+type=git
+reference={{ git_repos['CONGRESS_BRANCH'] }}
+location={{ git_repos['CONGRESS_REPO'] }}
+
+[designate-base]
+type=git
+reference={{ git_repos['DESIGNATE_BRANCH'] }}
+location={{ git_repos['DESIGNATE_REPO'] }}
+
+[glance-base]
+type=git
+reference={{ git_repos['GLANCE_BRANCH'] }}
+location={{ git_repos['GLANCE_REPO'] }}
+
+[gnocchi-base]
+type=git
+reference={{ git_repos['GNOCCHI_BRANCH'] }}
+location={{ git_repos['GNOCCHI_REPO'] }}
+
+[heat-base]
+type=git
+reference={{ git_repos['HEAT_BRANCH'] }}
+location={{ git_repos['HEAT_REPO'] }}
+
+[horizon-plugin-neutron-lbaas-dashboard]
+type=git
+reference={{ git_repos['NEUTRON_LBAAS_DASHBOARD_BRANCH'] }}
+location={{ git_repos['NEUTRON_LBAAS_DASHBOARD_REPO'] }}
+
+[horizon]
+type=git
+reference={{ git_repos['HORIZON_BRANCH'] }}
+location={{ git_repos['HORIZON_REPO'] }}
+
+[ironic-base]
+type=git
+reference={{ git_repos['IRONIC_BRANCH'] }}
+location={{ git_repos['IRONIC_REPO'] }}
+
+[ironic-inspector]
+type=git
+reference={{ git_repos['IRONIC_INSPECTOR_BRANCH'] }}
+location={{ git_repos['IRONIC_INSPECTOR_REPO'] }}
+
+[keystone-base]
+type=git
+reference={{ git_repos['KEYSTONE_BRANCH'] }}
+location={{ git_repos['KEYSTONE_REPO'] }}
+
+[kolla-deploy]
+type=git
+reference={{ git_repos['KOLLA_ANSIBLE_BRANCH'] }}
+location={{ git_repos['KOLLA_ANSIBLE_REPO'] }}
+
+[kuryr-base]
+type=git
+reference={{ git_repos['KURYR_BRANCH'] }}
+location={{ git_repos['KURYR_REPO'] }}
+
+[kuryr-libnetwork]
+type=git
+reference={{ git_repos['KURYR_LIBNETWORK_BRANCH'] }}
+location={{ git_repos['KURYR_LIBNETWORK_REPO'] }}
+
+[magnum-base]
+type=git
+reference={{ git_repos['MAGNUM_BRANCH'] }}
+location={{ git_repos['MAGNUM_REPO'] }}
+
+[manila-base]
+type=git
+reference={{ git_repos['MANILA_BRANCH'] }}
+location={{ git_repos['MANILA_REPO'] }}
+
+[mistral-base]
+type=git
+reference={{ git_repos['MISTRAL_BRANCH'] }}
+location={{ git_repos['MISTRAL_REPO'] }}
+
+[murano-base]
+type=git
+reference={{ git_repos['MURANO_BRANCH'] }}
+location={{ git_repos['MURANO_REPO'] }}
+
+[neutron-base]
+type=git
+reference={{ git_repos['NEUTRON_BRANCH'] }}
+location={{ git_repos['NEUTRON_REPO'] }}
+
+[neutron-lbaas-agent]
+type=git
+reference={{ git_repos['NEUTRON_LBAAS_BRANCH'] }}
+location={{ git_repos['NEUTRON_LBAAS_REPO'] }}
+
+[neutron-sfc-agent]
+type=git
+reference={{ git_repos['NETWORKING_SFC_BRANCH'] }}
+location={{ git_repos['NETWORKING_SFC_REPO'] }}
+
+[neutron-vpnaas-agent]
+type=git
+reference={{ git_repos['NEUTRON_VPNAAS_BRANCH'] }}
+location={{ git_repos['NEUTRON_VPNAAS_REPO'] }}
+
+[neutron-server-plugin-neutron-lbaas]
+type=git
+reference={{ git_repos['NEUTRON_LBAAS_BRANCH'] }}
+location={{ git_repos['NEUTRON_LBAAS_REPO'] }}
+
+[nova-base]
+type=git
+reference={{ git_repos['NOVA_BRANCH'] }}
+location={{ git_repos['NOVA_REPO'] }}
+
+[nova-novncproxy]
+type=git
+reference={{ git_repos['NOVNC_BRANCH'] }}
+location={{ git_repos['NOVNC_REPO'] }}
+
+[nova-spicehtml5proxy]
+type=git
+reference={{ git_repos['SPICE_HTML5_BRANCH'] }}
+location={{ git_repos['SPICE_HTML5_REPO'] }}
+
+[openstack-base]
+type=git
+reference={{ git_repos['REQUIREMENTS_BRANCH'] }}
+location={{ git_repos['REQUIREMENTS_REPO'] }}
+
+[openstack-base-plugin-ovs]
+type=git
+reference={{ git_repos['OVS_BRANCH'] }}
+location={{ git_repos['OVS_REPO'] }}
+
+[rally]
+type=git
+reference={{ git_repos['RALLY_BRANCH'] }}
+location={{ git_repos['RALLY_REPO'] }}
+
+[sahara-base]
+type=git
+reference={{ git_repos['SAHARA_BRANCH'] }}
+location={{ git_repos['SAHARA_REPO'] }}
+
+[senlin-base]
+type=git
+reference={{ git_repos['SENLIN_BRANCH'] }}
+location={{ git_repos['SENLIN_REPO'] }}
+
+[swift-base]
+type=git
+reference={{ git_repos['SWIFT_BRANCH'] }}
+location={{ git_repos['SWIFT_REPO'] }}
+
+[tempest]
+type=git
+reference={{ git_repos['TEMPEST_BRANCH'] }}
+location={{ git_repos['TEMPEST_REPO'] }}
+
+[trove-base]
+type=git
+reference={{ git_repos['TROVE_BRANCH'] }}
+location={{ git_repos['TROVE_REPO'] }}
+
+[watcher-base]
+type=git
+reference={{ git_repos['WATCHER_BRANCH'] }}
+location={{ git_repos['WATCHER_REPO'] }}
+
+[zaqar]
+type=git
+reference={{ git_repos['ZAQAR_BRANCH'] }}
+location={{ git_repos['ZAQAR_REPO'] }}
+
+[openvswitch-base]
+type=git
+reference={{ git_repos['OVS_BRANCH'] }}
+location={{ git_repos['OVS_REPO'] }}
+
+[ovsdpdk]
+type=git
+reference={{ git_repos['OVS_BRANCH'] }}
+location={{ git_repos['OVS_REPO'] }}
+
+[ovsdpdk-plugin-dpdk]
+type=git
+reference={{ git_repos['DPDK_BRANCH'] }}
+location={{ git_repos['DPDK_REPO'] }}
+

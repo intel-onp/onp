@@ -1,0 +1,146 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+  - name: set kolla_deploy_config_dir to tmpdir
+    set_fact:
+      # internet says to use default(..., true) because lookup returns empty string and not undefined
+      # so default needs to consider empty string to be false.
+      kolla_deploy_config_dir: "{{ lookup('env', 'TMPDIR')|default('/tmp', true) ~ '/kolla_deploy_' ~ groups['control'][0] }}"
+
+  - debug: msg="kolla deploy config dir = {{ kolla_deploy_config_dir }}"
+
+  - name: create kolla deploy config path
+    file: "path={{ kolla_deploy_config_dir }}/config/neutron state=directory"
+
+  - name: Start {{ kolla_deploy_container }} container
+    docker_container:
+      name: "{{ kolla_deploy_container }}"
+      image: "{{ docker_registry }}/{{ docker_namespace }}/{{ kolla_base_distro }}-source-kolla-deploy:{{ openstack_release }}"
+      recreate: yes
+      state: started
+      restart_policy: always
+      env: "{{ proxy_env }}"
+      # have to use host in order to avoid ssh problems
+      network_mode: host
+      volumes:
+        - "{{ kolla_deploy_config_dir }}:/etc/kolla"
+        - /root/.ssh:/root/.ssh:ro
+
+  - name: create globals.yml config file
+    template:
+      src: globals.yml.j2
+      dest: "{{ kolla_deploy_config_dir }}/globals.yml"
+
+  - name: copy config files - passwords.yml
+    command: docker exec {{ kolla_deploy_container }} cp /root/kolla/etc/kolla/passwords.yml /etc/kolla
+    args:
+      chdir: "{{ kolla_deploy_config_dir }}"
+      creates: pass_done
+
+  - name: generate passwords
+    shell: "docker exec {{ kolla_deploy_container }} bash -c 'pushd /root/kolla; kolla-genpwd; popd' > pass_done"
+    args:
+      chdir: "{{ kolla_deploy_config_dir }}"
+      creates: pass_done
+
+  - name: update password with user defined
+    replace:
+      dest: "{{ kolla_deploy_config_dir }}/passwords.yml"
+      regexp: "^{{ item }}:.*"
+      replace: "{{ item }}: {{ vars[item] }}"
+    with_items:
+      - keystone_admin_password
+      - database_password
+      - horizon_secret_key
+      - rabbitmq_password
+
+  - name: generate network mappings
+    generate_network_mappings:
+      tenant_networks: "{{ node_info[groups['control'][0]].tenant_networks }}"
+    delegate_to: localhost
+
+  - debug: var=ovs_bridge_mapping
+  - debug: var=physical_network
+  - debug: var=vlan_interface
+  - debug: var=ovs_physical_bridge
+  - debug: var=m2_vlan_ranges
+
+  - name: create inventory file
+    template:
+      src: inventory.j2
+      dest: "{{ kolla_deploy_config_dir }}/inventory"
+
+  - name: copy nova.conf file
+    copy: "src=nova.conf dest={{ kolla_deploy_config_dir }}/config/nova.conf"
+
+  - name: copy heat.conf file, set unlimited resources per top-level stack
+    copy: "src=heat.conf dest={{ kolla_deploy_config_dir }}/config/heat.conf"
+
+  - name: copy neutron.conf file
+    template:
+      src: neutron.conf.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/neutron.conf"
+
+  - name: copy l3_agent.ini file
+    copy: "src=l3_agent.ini dest={{ kolla_deploy_config_dir }}/config/neutron/l3_agent.ini"
+
+  - name: create neutron ml2_conf.ini file
+    template:
+      src: ml2_conf.ini.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/neutron/ml2_conf.ini"
+
+  - include: glance_swift.yml
+    when: use_swift
+
+  - include: collectd.yml
+    when: use_ceilometer
+
+  - name: create cinder iscsi ip conf.ini file
+    template:
+      src: cinder.conf.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/cinder.conf"
+    when: "cinder_backend == 'lvm'"
+
+# TODO: Remove next WA in PIKE release
+# Review https://review.openstack.org/#/c/400187/ was merged to master (pike) on 20.3.2017
+# bug https://bugs.launchpad.net/kolla-ansible/+bug/1643509  is fixed upstream
+  - name: create cinder.conf file with WA for glance issue - correct glance_api
+    copy: "src=cinder_nfs.conf dest={{ kolla_deploy_config_dir }}/config/cinder.conf"
+    when: "cinder_backend == 'nfs'"
+
+# TODO: Remove .j2 extension in PIKE release
+# Fix did not make it into Ocata
+  - name: create cinder nfs_shares file
+    template:
+      src: nfs_shares.j2
+      dest: "{{ kolla_deploy_config_dir }}/config/nfs_shares.j2"
+    when: "cinder_backend == 'nfs'"
+
+  - name: create ansible config path
+    command: docker exec {{ kolla_deploy_container }} mkdir -p /etc/ansible
+
+  - name: copy ansible.cfg file to {{ kolla_deploy_container }} container
+    command: "docker cp {{ role_path }}/files/ansible.cfg {{ kolla_deploy_container }}:/etc/ansible"

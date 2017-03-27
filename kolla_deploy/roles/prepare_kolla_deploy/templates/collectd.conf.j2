@@ -1,0 +1,53 @@
+FQDNLookup false
+
+LoadPlugin logfile
+<Plugin logfile>
+        LogLevel info
+        File "/var/log/kolla/collectd/collectd.log"
+        Timestamp true
+        PrintSeverity true
+</Plugin>
+
+LoadPlugin cpu
+LoadPlugin interface
+LoadPlugin load
+LoadPlugin memory
+
+<LoadPlugin python>
+    Globals true
+</LoadPlugin>
+
+<Plugin python>
+    ModulePath "/collectd-ceilometer-plugin"
+    LogTraces true
+    Interactive false
+    Import "collectd_ceilometer.ceilometer.plugin"
+
+    <Module "collectd_ceilometer.ceilometer.plugin">
+
+        # Verbosity True|False
+        VERBOSE True
+
+        # Batch size
+        BATCH_SIZE "1"
+
+        # Service endpoint addresses
+        OS_AUTH_URL "http://{{ kolla_internal_vip_address }}:35357/v3"
+
+        # Ceilometer address
+        CEILOMETER_URL_TYPE "internalURL"
+
+        # Ceilometer timeout in ms
+        CEILOMETER_TIMEOUT "1000"
+
+        # # Ceilometer user creds
+        # (from ceilometer.conf)
+        OS_USERNAME "ceilometer"
+        OS_PASSWORD "{{ ceilometer_keystone_password }}"
+        OS_TENANT_NAME "service"
+
+      <UNITS>
+      </UNITS>
+    </Module>
+</Plugin>
+

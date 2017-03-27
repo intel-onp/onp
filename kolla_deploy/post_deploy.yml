@@ -1,0 +1,97 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+- hosts: compute:network:control
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - onps_commit_ids.yml
+    - kolla_version.yml
+  environment: "{{ proxy_env|calculate_no_proxy }}"
+
+  pre_tasks:
+    - set_fact:
+        proxy_env: "{{ proxy_env|calculate_no_proxy }}"
+
+  roles:
+    - role: calculate_core_masks
+      when: ovs_type == "ovs-dpdk"
+    - role: dpdk
+      when: ovs_type == "ovs-dpdk"
+
+- hosts: compute:network
+  vars_files:
+    - onps_config.yml
+  roles:
+    - configure_ovs
+
+- hosts: localhost
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - kolla_version.yml
+
+  roles:
+    - role: add_test_key
+      when: use_magnum
+
+- hosts: control:network
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - kolla_version.yml
+
+  roles:
+    - role: share_test_key
+      when: use_magnum
+    - role: configure_snat
+      when: use_magnum or use_kuryr_kubernetes
+
+- hosts: control[0]
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - onps_commit_ids.yml
+    - kolla_version.yml
+
+  roles:
+    - role: create_os_defaults
+      when: use_kuryr_kubernetes
+    - role: create_kk_defaults
+      when: use_kuryr_kubernetes
+    - role: create_kk_cloudinit
+      when: use_kuryr_kubernetes
+
+- hosts: control
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - kolla_version.yml
+
+  roles:
+    - role: magnum_post
+      run_once: True
+      when: use_magnum

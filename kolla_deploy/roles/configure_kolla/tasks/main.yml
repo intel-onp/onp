@@ -1,0 +1,75 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+  - name: Create proxy settings for images
+    template: "src=proxy.j2 dest={{ item }} owner=root group=root mode=0644"
+    when: '"http_proxy" in proxy_env or "https_proxy" in proxy_env'
+    with_items:
+      - "{{ kolla_dir }}/.header"
+
+  - name: Copy footer file to kolla to unset any proxy settings
+    copy: "src=footer dest={{ kolla_dir }}/.footer owner=root group=root"
+
+  - name: Create kolla generic settings
+    template:
+      src: onp_kolla_generic.conf.j2
+      dest: "{{ kolla_config_path }}/onp_kolla_generic.conf"
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Create kolla components specification file
+    template:
+      src: onp_kolla_components.conf.j2
+      dest: "{{ kolla_config_path }}/onp_kolla_components.conf"
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Copy kolla dockerfile override
+    copy: "src=kolla_override.j2 dest={{ kolla_config_path }} owner=root group=root"
+
+  - name: Create path for kolla_deploy image
+    file: "path={{ kolla_dir }}/docker/kolla-deploy state=directory"
+
+  - name: Copy kolla-deploy Dockerfile
+    copy: "src=Dockerfile.j2 dest={{ kolla_dir }}/docker/kolla-deploy owner=root group=root"
+
+  - block:
+    - name: Run build, can take up to 2h. Progress trackable in above log file. Delete log file to make full rerun.
+      shell: tools/build.py --config-dir {{ kolla_config_path }} --template-override {{ kolla_config_path }}/kolla_override.j2 &> {{ kolla_build_log_file }}
+      args:
+        executable: /bin/bash
+        chdir: "{{ kolla_dir }}"
+        creates: "{{ kolla_build_log_file }}"
+    always:
+    - name: fetch kolla_build.log and configuration for debug purposes
+      fetch: src="{{ item }}" dest="{{ local_log_dir }}" validate_checksum=yes
+      with_items:
+        - "{{ kolla_dir }}/kolla_build.log"
+        - "{{ kolla_dir }}/etc/kolla/kolla_override.j2"
+        - "{{ kolla_dir }}/etc/kolla/onp_kolla_components.conf"
+        - "{{ kolla_dir }}/etc/kolla/onp_kolla_generic.conf"

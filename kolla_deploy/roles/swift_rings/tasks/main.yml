@@ -1,0 +1,98 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+  - name: Prepare swift rings for glance
+    debug: msg="Start swift rings preparation"
+
+  - name: create kolla deploy config path for swift
+    file: "path={{ kolla_deploy_config_dir }}/config/swift state=directory"
+
+  - name: create prepare_swift_rings.sh file
+    template:
+      src: prepare_swift_rings.sh.j2
+      dest: "/tmp/prepare_swift_rings.sh"
+      owner: root
+      group: root
+      mode: 0755
+
+  - name: run prepare_swift_rings.sh
+    command: /tmp/prepare_swift_rings.sh
+
+  - name: create directory {{ role_path }}/files if doesn't exest
+    file:
+      path: "{{ role_path }}/files"
+      state: directory
+      mode: 0755
+
+# TODO: remove this swift solution once it is added/resolved upstream
+  - name: copy glance/templates/glance-api.conf.j2 from {{ kolla_deploy_container }} container to glance-api.conf.j2 file
+    command: "docker cp {{ kolla_deploy_container }}:{{ kolla_ansible_install_dir }}/ansible/roles/glance/templates/glance-api.conf.j2 {{ role_path }}/files/glance-api.conf.j2"
+
+# TODO: remove this swift solution once it is added/resolved upstream
+# Original in file:
+#[glance_store]
+#{% if enable_ceph | bool and glance_backend_ceph | bool %}
+#default_store = rbd
+#stores = rbd
+#rbd_store_user = glance
+#rbd_store_pool = {{ ceph_glance_pool_name }}
+#rbd_store_chunk_size = 8
+#{% else %}
+#default_store = file
+#filesystem_store_datadir = /var/lib/glance/images/
+#{% endif %}
+#
+# After update in file:
+#[glance_store]
+#{% if enable_ceph | bool and glance_backend_ceph | bool %}
+#default_store = rbd
+#stores = rbd
+#rbd_store_user = glance
+#rbd_store_pool = {{ ceph_glance_pool_name }}
+#rbd_store_chunk_size = 8
+#{% elif enable_swift | bool %}
+#default_store = swift
+#stores = glance.store.swift.Store
+#swift_store_auth_version = 2
+#swift_store_auth_address = {{ admin_protocol }}://{{ kolla_internal_fqdn }}:{{ keystone_admin_port }}/v2.0/
+#swift_store_user = service:glance
+#swift_store_key = {{ swift_keystone_password }}
+#swift_store_container = glance
+#swift_store_create_container_on_put = True
+#{% else %}
+#default_store = file
+#filesystem_store_datadir = /var/lib/glance/images/
+#{% endif %}
+
+  - name: Update glance-api.conf.j2 file to support and use swift storage
+    replace: dest={{ role_path }}/files/glance-api.conf.j2
+             regexp='(^rbd_store_chunk_size = 8\n)(?={{ '{%' }} else {{ '%}' }}\ndefault_store = file\n)'
+             replace='\1{{ '{%' }} elif enable_swift | bool and glance_backend_swift | bool {{ '%}' }}\ndefault_store = swift\nstores = glance.store.swift.Store\nswift_store_auth_version = 2\nswift_store_auth_address = {{ '{{' }} admin_protocol {{ '}}' }}://{{ '{{' }} kolla_internal_fqdn {{ '}}' }}:{{ '{{' }} keystone_admin_port {{ '}}' }}/v2.0/\nswift_store_user = service:glance\nswift_store_key = {{ '{{' }} glance_keystone_password {{ '}}' }}\nswift_store_container = glance\nswift_store_create_container_on_put = True\n'
+             backup=yes
+
+# TODO: remove this swift solution once it is added/resolved upstream
+  - name: copy glance-api.conf.j2 file with swift support to {{ kolla_deploy_container }} container
+    command: "docker cp {{ role_path }}/files/glance-api.conf.j2 {{ kolla_deploy_container }}:{{ kolla_ansible_install_dir }}/ansible/roles/glance/templates/glance-api.conf.j2"

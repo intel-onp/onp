@@ -1,0 +1,91 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+- hosts: kolla_build
+
+  vars_files:
+    - constants.yml
+    - onps_config.yml
+    - kolla_version.yml
+    - onps_commit_ids.yml
+
+  vars:
+    components_dir: "{{ kolla_dir }}/components"
+    kolla_update_log_file: "{{ components_dir }}/registry_update.log"
+    update_config_dir: "{{ components_dir }}/etc/kolla"
+
+
+  #  Uncomment or add components to the list bellow to clone and update it in the registry
+  #  NOTE: onps_commit_ids.yml file should be updated first with desired commit ids and repos
+  #        Enable update_registry role to push changes
+
+    components:
+  #    AODH: aodh-base
+  #    BARBICAN: barbican-base
+  #    BIFROST: bifrost-base
+  #    CEILOMETER: ceilometer-base
+  #    CINDER: cinder-base
+  #    CLOUDKITTY: cloudkitty-base
+  #    CONGRESS: congress-base
+  #    DESIGNATE: designate-base
+  #    DPDK: ovsdpdk-plugin-dpdk
+  #    GLANCE: glance-base
+  #    GNOCCHI: gnocchi-base
+  #    HEAT: heat-base
+  #    HORIZON: horizon
+  #    IRONIC: ironic-base
+  #    KEYSTONE: keystone
+  #    KOLLA_ANSIBLE: kolla-deploy
+  #    KURYR: kuryr-base
+  #    KURYR_LIBNETWORK: kuryr-libnetwork
+  #    MAGNUM: magnum-base
+  #    MANILA: manila-base
+  #    MISTRAL: mistral-base
+  #    MURANO: murano-base
+  #    NETWORKING_SFC: neutron-sfc-agent
+  #    NEUTRON_LBAAS: neutron-lbaas-agent
+  #    NEUTRON_LBAAS: neutron-server-plugin-neutron-lbaas
+  #    NEUTRON: neutron-base
+  #    NEUTRON_VPNAAS: neutron-vpnaas-agent
+  #    NOVA: nova-base
+  #    NOVNC: nova-novncproxy
+  #    OPENSTACK: openstack-base
+  #    OVS: openvswitch-base
+  #    OVS: ovsdpdk
+  #    RALLY: rally
+  #    SAHARA: sahara-base
+  #    SENLIN: senlin-base
+  #    SPICE_HTML5: nova-spicehtml5proxy
+  #    SWIFT: swift-base
+  #    TEMPEST: tempest
+  #    TROVE: trove-base
+  #    WATCHER: watcher-base
+  #    ZAQAR: zaqar
+
+  roles:
+    - rebuild_components
+  #  - role: update_registry
+  #    use_docker_cache: true

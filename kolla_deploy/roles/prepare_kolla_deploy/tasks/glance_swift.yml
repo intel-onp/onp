@@ -1,0 +1,47 @@
+# Copyright (c) 2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+# TODO: remove this swift solution once it is added/resolved upstream
+# Original in file:
+#glance_backend_file: "{{ not enable_ceph | bool }}"
+#glance_backend_ceph: "{{ enable_ceph }}"
+#
+# After update in file:
+#glance_backend_file: "{{ not enable_swift | bool and not enable_ceph | bool }}"
+#glance_backend_swift: "{{ enable_swift ))"
+#glance_backend_ceph: "{{ enable_ceph }}"
+
+  - name: update group_vars/all.yml with glance_backend_swift
+    command: "docker exec {{ kolla_deploy_container }} bash -l -c 'sed -i -e \"$!N;s/\\(glance_backend_file: \\\"{{ '{{' }} \\)\\(not enable_ceph | bool {{ '}}' }}\\\"\\n\\)\\(glance_backend_ceph:\\)/\\1not enable_swift | bool and \\2glance_backend_swift: \\\"{{ '{{' }} enable_swift {{ '}}' }}\\\"\\n\\3/;P;D\" {{ kolla_ansible_install_dir }}/ansible/group_vars/all.yml'"
+# TODO: remove WA when https://bugs.launchpad.net/kolla/+bug/1673657 will be merged in Pike
+  - name: Apply WA for bug 1673657
+    command: "docker exec {{ kolla_deploy_container }} bash -l -c 'sed -i \"/heka_socket:\\/var\\/lib\\/kolla\\/heka\\//d\" {{ item }} '"
+    with_items:
+      - "{{ kolla_ansible_install_dir }}/ansible/roles/nova/defaults/main.yml"
+      - "{{ kolla_ansible_install_dir }}/ansible/roles/swift/tasks/start.yml"
+    when:
+      # WA is valid only for Ocata and newer version
+      "'kolla-ansible' in '{{ kolla_ansible_install_dir }}'"

@@ -1,0 +1,28 @@
+[DEFAULT]
+
+base = {{ kolla_base_distro }}
+base_tag = {{ kolla_base_distro_release }}
+debug = true
+{% if "http_proxy" in proxy_env or "https_proxy" in proxy_env %}
+include_header = .header
+include_footer = .footer
+{% endif %}
+keep = false
+namespace = {{ docker_namespace }}
+cache = true
+push = true
+push_threads = 1
+retries = 3
+registry = {{ docker_registry }}
+install_type = source
+threads = 4
+maintainer = Intel Corp. (http://www.intel.com)
+profile = {{ profile_name }}
+profile = main
+profile = default
+
+{% if kolla_base_distro == "ubuntu" %}
+{% set intelonp_images  =  intelonp_images | reject('search', 'collectd') %}
+{% endif %}
+[PROFILES]
+intelonp = {{ intelonp_images | join(',') }}

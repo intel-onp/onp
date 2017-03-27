@@ -1,0 +1,89 @@
+# Copyright (c) 2016-2017, Intel Corporation.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+- hosts: compute:network:control:storage
+  any_errors_fatal: true
+  vars_files:
+    - constants.yml
+    - kernel_config.yml
+    - kolla_version.yml
+    - onps_config.yml
+  environment: "{{ proxy_env|calculate_no_proxy }}"
+
+  pre_tasks:
+    - set_fact:
+        proxy_env: "{{ proxy_env|calculate_no_proxy }}"
+
+    - group_by: key={{ ansible_os_family }}
+
+  roles:
+    - get_docker_registry
+    - configure_network
+    # set http proxy as well before packages are installed, in case some package wants to wget, e.g. webupd8 java
+    - role: set_http_proxy
+      when: proxy_env
+      tags:
+        - proxy_setup
+    - role: set_package_installer_proxy
+      tags:
+        - proxy_setup
+      when: proxy_env
+     # docker_python may need pip_mirror (also easy_install mirror)
+    - role: pip_mirror
+      when: proxy_env or pip_mirror_url is defined
+    - install_dependencies
+    - check_virtualization
+    - disable_host_libvirt
+    - role: disable_host_iscsid
+      when: use_magnum
+    - configure_ntp
+    - configure_etc_hosts
+    - add_haproxy_firewall_rules
+    - role: increase_open_file_limits
+      # only on hosts running mariadb
+      # have to do this on host, containers cannot increase ulimit
+      when: "'mariadb' in group_names"
+    - docker
+    - docker_python
+    - role: enable_configfs
+      when: ansible_os_family == "Debian"
+    - role: disable_libvirt_profile
+      when: ansible_os_family == "Debian"
+    - calculate_kernel
+    - role: install_kernel
+      kernel_download_dir: "/root/kernel-rpms"
+    # compile driver now for new kernel
+    - role: use_intel_driver
+      target_kernel_version: "{{ kernel_data.kernel_version }}"
+      when: use_intel_driver|default(True)
+    - role: reboot_and_check_kernel_version
+      target_kernel_version: "{{ kernel_data.kernel_version }}"
+    - role: cinder_lvm_setup
+      when: "'control' in group_names and cinder_backend == 'lvm'"
+    - role: prepare_disks_for_swift
+      when: "'storage' in group_names and groups['control'] | length > 1"
+    - role: get_nfs_storage
+      when: "inventory_hostname == groups['network'][0] and cinder_backend == 'nfs'"

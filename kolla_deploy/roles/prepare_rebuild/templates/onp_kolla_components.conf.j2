@@ -1,0 +1,11 @@
+[DEFAULT]
+tag = {{ openstack_release }}
+
+
+{% for name, tag in components.iteritems() %}
+[{{ tag }}]
+type=local
+location={{ components_dir }}/{{ name }}
+
+{% endfor %}
+

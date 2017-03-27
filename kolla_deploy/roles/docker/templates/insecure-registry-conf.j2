@@ -1,0 +1,4 @@
+[Service]
+# line required to clear ExecStart see https://github.com/docker/docker/issues/14491
+ExecStart=
+ExecStart=/usr/bin/docker daemon --insecure-registry {{ docker_registry }} --storage-driver={{ docker_storage_driver }} -H unix:///var/run/docker.sock
