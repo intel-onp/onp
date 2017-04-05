@@ -66,7 +66,7 @@ swift_devices_match_mode: "strict"
 swift_devices_name: "KOLLA_SWIFT_DATA"
 {% endif %}
 
-{% if use_neutron_lbaas or use_kuryr_kuberbetes|default(False) %}
+{% if use_neutron_lbaas or use_kuryr_kubernetes|default(False) %}
 enable_neutron_lbaas: "yes"
 {% endif %}
 

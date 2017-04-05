@@ -103,9 +103,9 @@ write_files:
     KUBE_ETCD_SERVERS="--etcd-servers=http://{{ portip }}:2379"
     KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.20.0.0/24"
     KUBE_API_ARGS=""
- -  path: /etc/kubernetes/config
-    content: |
-     KUBE_MASTER="--master=http://{{ portip }}:8080"
+ - path: /etc/kubernetes/config
+   content: |
+    KUBE_MASTER="--master=http://{{ portip }}:8080"
  - path: /etc/kubernetes/kubelet
    content: |
     KUBELET_ADDRESS="--address=0.0.0.0"

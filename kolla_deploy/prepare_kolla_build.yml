@@ -25,6 +25,7 @@
 
 ---
 - hosts: kolla_build
+  any_errors_fatal: true
   vars_files:
     - constants.yml
     - kolla_version.yml

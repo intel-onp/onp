@@ -137,6 +137,9 @@ use_neutron_fwaas: false
 # Fedora atomic (Ocata): "https://fedorapeople.org/groups/magnum/fedora-atomic-ocata.qcow2"
 # Fedora atomic latest: "https://fedorapeople.org/groups/magnum/fedora-atomic-latest.qcow2"
 #
+# Jumphost (Ansible driver) will need access to the Openstack Management
+# network if kolla_external_vip_address is the same as kolla_internal_vip_address
+#
 # Do not use magnum with kuryr_kubernetes, either or
 use_magnum: false
 #magnum_guest_image: "https://fedorapeople.org/groups/magnum/fedora-atomic-ocata.qcow2"
