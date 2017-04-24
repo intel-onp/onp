@@ -138,8 +138,8 @@ runcmd:
  - dnf install -y git python-devel redhat-rpm-config libffi-devel gcc iptables coreutils ethtool etcd kubernetes go
  - pip install os-testr
  - git clone {{ git_repos['KURYR_KUBERNETES_REPO'] }} /opt/stack/kuryr-kubernetes --branch {{ git_repos['KURYR_KUBERNETES_BRANCH'] }}
- - git clone http://github.com/containernetworking/cni /opt/cni
- - pip install -r /opt/stack/kuryr-kubernetes/requirements
+ - git clone {{ git_repos['CNI_REPO'] }} /opt/cni --branch {{ git_repos['CNI_BRANCH'] }}
+ - pip install -r /opt/stack/kuryr-kubernetes/requirements.txt
  - pip install /opt/stack/kuryr-kubernetes/.
  - pushd /opt/cni && ./build && popd
  - install -o fedora -m 0555 -D $(which kuryr-cni) /opt/stack/cni/bin/kuryr-cni

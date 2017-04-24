@@ -22,6 +22,8 @@ git_repos:
   CLIFF_REPO: http://git.openstack.org/openstack/cliff
   CLOUDKITTY_BRANCH: 31845a888f7adf992667e5753ca45149ba5f13eb
   CLOUDKITTY_REPO: http://git.openstack.org/openstack/cloudkitty
+  CNI_BRANCH: int_macvlan
+  CNI_REPO: http://github.com/intel-onp/cni
   COLLECTD_BRANCH: 0c157068b398f336b6478cb24fa05243b49fcda4
   COLLECTD_REPO: http://github.com/collectd/collectd
   COLLECTD_CEILOMETER_BRANCH: 911961d18a54a10f004d942f5214b10facdc8b98
