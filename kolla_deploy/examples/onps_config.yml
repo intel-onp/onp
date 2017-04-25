@@ -143,8 +143,8 @@ use_neutron_fwaas: false
 # Do not use magnum with kuryr_kubernetes, either or
 use_magnum: false
 #magnum_guest_image: "https://fedorapeople.org/groups/magnum/fedora-atomic-ocata.qcow2"
-#Public network info to be used by magnum E.g.:
-#It should be subnet/gw used by mgmt inteface
+# Public network info to be used by magnum:
+# This magnum public network should be unique from Openstack mgmt & tenant networks
 #magnum_external_net_gw_ip_cidr: "192.168.31.1/24"
 #magnum_external_net_pool_start: "100"
 #magnum_external_net_pool_end: "199"
